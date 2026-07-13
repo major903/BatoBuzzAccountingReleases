@@ -1,0 +1,89 @@
+<UserControl x:Class="BatoBuzz.Desktop.Views.CompanySetupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  PanningMode="VerticalOnly">
+      <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24">
+        <Border Style="{DynamicResource SectionPanel}" CornerRadius="12" Padding="40" Width="600">
+            <StackPanel>
+                <TextBlock Text="{Binding Heading}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,24"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Company Name *" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding CompanyName}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Trading Name" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding TradingName}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Address" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Address}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="City" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding City}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Province" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Provinces}"
+                                  SelectedItem="{Binding Province}"
+                                  Margin="0,0,0,12"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Phone" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Phone}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Email" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Email}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="PAN Number" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding PanNumber}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="VAT Number" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding VatNumber}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Company Registration Number" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding CompanyRegNumber}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Base Currency" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding BaseCurrency}" IsReadOnly="True" Margin="0,0,0,12"/>
+                    </StackPanel>
+                </Grid>
+
+                <GroupBox Header="Financial Year" Margin="0,8,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Start Date" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                            <DatePicker SelectedDate="{Binding FinancialYearStart}" IsEnabled="{Binding IsFinancialYearEditable}" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding FinancialYearStartBs, StringFormat='BS: {0}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,8"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="End Date" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                            <DatePicker SelectedDate="{Binding FinancialYearEnd}" IsEnabled="{Binding IsFinancialYearEditable}" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding FinancialYearEndBs, StringFormat='BS: {0}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,8"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,12"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
+                    <Button Content="{Binding ActionText}" Command="{Binding CreateCompanyCommand}" Style="{DynamicResource PrimaryButton}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+      </Grid>
+    </ScrollViewer>
+</UserControl>

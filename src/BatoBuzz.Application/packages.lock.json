@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "batobuzz.contracts": {
+        "type": "Project"
+      },
+      "batobuzz.domain": {
+        "type": "Project"
+      }
+    },
+    "net10.0/win-x64": {}
+  }
+}

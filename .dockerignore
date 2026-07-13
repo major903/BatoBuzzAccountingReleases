@@ -1,0 +1,40 @@
+# The API image only needs its five source projects plus root MSBuild inputs.
+# Keep credentials, databases, generated artifacts, demos, and repository
+# metadata out of the Docker build context by default.
+**
+
+!Directory.Build.props
+!global.json
+
+!src/
+!src/BatoBuzz.Api/
+!src/BatoBuzz.Api/**
+!src/BatoBuzz.Application/
+!src/BatoBuzz.Application/**
+!src/BatoBuzz.Contracts/
+!src/BatoBuzz.Contracts/**
+!src/BatoBuzz.Domain/
+!src/BatoBuzz.Domain/**
+!src/BatoBuzz.Infrastructure/
+!src/BatoBuzz.Infrastructure/**
+
+!deployment/
+!deployment/docker/
+!deployment/docker/Dockerfile
+
+**/bin/
+**/obj/
+**/logs/
+**/*.log
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.pfx
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json

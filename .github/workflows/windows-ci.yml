@@ -1,0 +1,116 @@
+name: Production CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Validate release PowerShell syntax
+        shell: pwsh
+        run: |
+          $syntaxErrors = @()
+          foreach ($script in @("scripts/build-desktop.ps1", "scripts/build-release.ps1")) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $script), [ref]$tokens, [ref]$errors) | Out-Null
+            $syntaxErrors += $errors
+          }
+          if ($syntaxErrors.Count -gt 0) {
+            $syntaxErrors | Format-List | Out-String | Write-Error
+          }
+
+      - name: Restore solution and smoke project
+        run: |
+          dotnet restore BatoBuzz.Accounting.sln --nologo
+          dotnet restore scripts/BatoBuzz.SmokeTests/BatoBuzz.SmokeTests.csproj --nologo
+
+      - name: Build Release with warnings as errors
+        run: dotnet build BatoBuzz.Accounting.sln --configuration Release --no-restore --nologo -p:TreatWarningsAsErrors=true
+
+      - name: Run accounting smoke check
+        run: dotnet run --project scripts/BatoBuzz.SmokeTests/BatoBuzz.SmokeTests.csproj --configuration Release --no-restore
+
+      - name: Validate self-contained portable release
+        run: .\scripts\build-release.ps1 -SkipInstaller
+
+  container-smoke:
+    name: Container smoke (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgres]
+    env:
+      API_SIGNING_KEY: "ci-only-signing-key-change-before-production-1234567890"
+      POSTGRES_PASSWORD: "ci-only-postgres-password-1234567890"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Prepare writable container mounts
+        run: |
+          mkdir -p deployment/docker/data deployment/docker/logs
+          sudo chown -R 10001:10001 deployment/docker/data deployment/docker/logs
+
+      - name: Validate Compose configuration
+        working-directory: deployment/docker
+        run: |
+          if [[ "${{ matrix.database }}" == "postgres" ]]; then
+            docker compose -f docker-compose.yml -f docker-compose.postgres.yml config --quiet
+          else
+            docker compose config --quiet
+          fi
+
+      - name: Build and smoke-test the container stack
+        working-directory: deployment/docker
+        run: |
+          set -Eeuo pipefail
+          compose=(docker compose)
+          if [[ "${{ matrix.database }}" == "postgres" ]]; then
+            compose+=(-f docker-compose.yml -f docker-compose.postgres.yml)
+          fi
+          cleanup() {
+            "${compose[@]}" logs --no-color || true
+            "${compose[@]}" down --volumes --remove-orphans || true
+          }
+          trap cleanup EXIT
+          "${compose[@]}" up --detach --build
+          for attempt in {1..45}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          "${compose[@]}" ps
+          exit 1

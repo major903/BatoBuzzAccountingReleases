@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>BatoBuzz.Desktop</RootNamespace>
+    <ApplicationIcon Condition="Exists('Assets\BatoBuzz.ico')">Assets\BatoBuzz.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BatoBuzz.Domain\BatoBuzz.Domain.csproj" />
+    <ProjectReference Include="..\BatoBuzz.Application\BatoBuzz.Application.csproj" />
+    <ProjectReference Include="..\BatoBuzz.Contracts\BatoBuzz.Contracts.csproj" />
+    <ProjectReference Include="..\BatoBuzz.Infrastructure\BatoBuzz.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\BatoBuzz.ico" />
+    <Resource Include="Assets\BatoBuzz.png" />
+    <Resource Include="Assets\TransparentTitleIcon.ico" />
+    <Resource Include="Assets\TransparentTitleIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\docs\user-guide\QUICK_START.md" Link="docs\QUICK_START.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\..\docs\security\SECURITY.md" Link="docs\SECURITY.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\..\README.md" Link="README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="$(SQLitePCLRawVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="PdfSharp" Version="6.2.4" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
+  </ItemGroup>
+</Project>

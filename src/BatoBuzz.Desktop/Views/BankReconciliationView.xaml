@@ -1,0 +1,100 @@
+<UserControl x:Class="BatoBuzz.Desktop.Views.BankReconciliationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filter bar -->
+        <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Bank Ledger" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <ComboBox ItemsSource="{Binding BankLedgers}" SelectedItem="{Binding SelectedLedger}" DisplayMemberPath="Name" Width="200"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="From" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <DatePicker SelectedDate="{Binding FromDate}" Width="130"/>
+                </StackPanel>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="To" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <DatePicker SelectedDate="{Binding ToDate}" Width="130"/>
+                </StackPanel>
+                <StackPanel Grid.Column="6" VerticalAlignment="Bottom">
+                    <Button Content="Refresh" Command="{Binding RefreshCommand}" Style="{DynamicResource PrimaryButton}" Padding="16,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Summary -->
+        <Border Grid.Row="1" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Opening Balance" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding OpeningBalance, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="16"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Book Balance (Total)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding ClosingBalance, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="16"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Reconciled Balance" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding ReconciledBalance, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="16"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3">
+                    <TextBlock Text="Unreconciled Difference" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding Difference, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" FontSize="16"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Transactions -->
+        <Border Grid.Row="2" Style="{DynamicResource SectionPanel}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                <DataGrid Grid.Row="1" ItemsSource="{Binding Transactions}" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=d}" Width="90"/>
+                        <DataGridTextColumn Header="Voucher" Binding="{Binding VoucherType}" Width="110"/>
+                        <DataGridTextColumn Header="Number" Binding="{Binding EntryNumber}" Width="110"/>
+                        <DataGridTextColumn Header="Narration" Binding="{Binding Narration}" Width="*"/>
+                        <DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat='Rs. {0:N2}'}" Width="110"/>
+                        <DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat='Rs. {0:N2}'}" Width="110"/>
+                        <DataGridTextColumn Header="Balance" Binding="{Binding Balance, StringFormat='Rs. {0:N2}'}" Width="110"/>
+                        <DataGridTemplateColumn Header="Cleared" Width="70">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsCleared, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,187 @@
+<UserControl x:Class="BatoBuzz.Desktop.Views.PaymentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid MaxWidth="1120" HorizontalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Style="{DynamicResource SectionPanel}" Padding="18"
+                    Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="Payment Voucher"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="22"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Supplier or expense payment"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="16,10"
+                            MinWidth="220">
+                        <StackPanel>
+                            <TextBlock Text="Amount"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       FontSize="11"/>
+                            <TextBlock Text="{Binding Amount, StringFormat='Rs. {0:N2}', TargetNullValue='Rs. 0.00'}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1"
+                    Style="{DynamicResource SectionPanel}" Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" IsEnabled="{Binding IsDocumentEditable}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,0,14">
+                            <TextBlock Text="Supplier" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <ComboBox Text="{Binding SupplierName}" ItemsSource="{Binding AvailableSuppliers}" IsEditable="True"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="0,0,0,14">
+                            <TextBlock Text="Date" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <DatePicker SelectedDate="{Binding PaymentDate}"/>
+                            <TextBlock Text="{Binding PaymentDateBs, StringFormat='BS: {0}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="4" Margin="0,0,0,14">
+                            <TextBlock Text="Amount" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBox Text="{Binding Amount}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1" IsEnabled="{Binding IsDocumentEditable}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,0,14">
+                            <TextBlock Text="Method" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding PaymentMethod}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="0,0,0,14">
+                            <TextBlock Text="Bank / Cash Account" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBox Text="{Binding BankName}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="4" Margin="0,0,0,14">
+                            <TextBlock Text="Reference" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBox Text="{Binding Reference}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2" IsEnabled="{Binding IsDocumentEditable}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,0,14">
+                            <TextBlock Text="TDS Rate (optional)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <ComboBox ItemsSource="{Binding TdsRates}" SelectedItem="{Binding SelectedTdsRate}" DisplayMemberPath="Name"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Margin="0,0,0,14">
+                            <TextBlock Text="TDS Amount" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBox Text="{Binding TdsAmount}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="4" Margin="0,0,0,14">
+                            <TextBlock Text="Total Settled (cash + TDS)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBlock Text="{Binding TotalSettled, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3" Margin="0,0,0,16" IsEnabled="{Binding IsDocumentEditable}">
+                        <TextBlock Text="Narration" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                        <TextBox Text="{Binding Narration}"
+                                 Height="72"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+
+                    <Border Grid.Row="4"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1,0,0,0"
+                            Padding="0,14,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="{Binding StatusMessage}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="New Payment"
+                                    Command="{Binding NewPaymentCommand}"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Margin="0,0,8,0"
+                                    MinWidth="110"/>
+                            <Button Grid.Column="2"
+                                    Content="Print"
+                                    Command="{Binding PrintCommand}"
+                                    IsEnabled="{Binding CanPrint}"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Margin="0,0,8,0"
+                                    MinWidth="100"/>
+                            <Button Grid.Column="3"
+                                    Content="Save Payment"
+                                    Command="{Binding SaveCommand}"
+                                    Style="{DynamicResource PrimaryButton}"
+                                    MinWidth="140"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

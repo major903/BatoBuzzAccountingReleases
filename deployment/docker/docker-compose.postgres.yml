@@ -1,0 +1,34 @@
+# Opt-in PostgreSQL override. This file is never loaded by the default
+# `docker compose up` command. POSTGRES_PASSWORD must be supplied by the
+# operator when this override is explicitly selected.
+services:
+  api:
+    environment:
+      DatabaseProvider: Postgres
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-batobuzz};Username=${POSTGRES_USER:-batobuzz};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before enabling PostgreSQL}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-batobuzz}"
+      POSTGRES_USER: "${POSTGRES_USER:-batobuzz}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before enabling PostgreSQL}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+volumes:
+  postgres-data:
