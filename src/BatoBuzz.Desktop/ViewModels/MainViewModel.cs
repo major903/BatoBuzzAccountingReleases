@@ -419,13 +419,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ShowAbout()
     {
-        MessageBox.Show(
-            $"BatoBuzz Accounting v{GetCurrentVersion()}" + Environment.NewLine +
-            "Offline-first Windows accounting software for Nepal." + Environment.NewLine + Environment.NewLine +
-            "Includes company setup, customers, suppliers, sales, purchase, receipts, payments, journals, inventory, dashboard, reports, backup, restore, and tester-controlled updates.",
-            "About BatoBuzz Accounting",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var owner = System.Windows.Application.Current?.Windows
+            .OfType<Window>()
+            .FirstOrDefault(window => window.IsActive)
+            ?? System.Windows.Application.Current?.MainWindow;
+
+        new AboutWindow(GetCurrentVersion().ToString(), owner).ShowDialog();
     }
 
     [RelayCommand]
