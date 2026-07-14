@@ -40,8 +40,7 @@ public static class SchemaUpgrader
         "Warehouses",
         "StockBalances",
         "AuditLogs",
-        "StockMovements",
-        "TdsRates"
+        "StockMovements"
     ];
 
     private static readonly IReadOnlyList<SchemaMigration> Migrations =
@@ -129,6 +128,26 @@ public static class SchemaUpgrader
                           AND ReversalJournalEntryId IS NOT NULL
                         """);
                 }
+            }),
+        new(
+            "20260714_005_add_tds_rates",
+            (connection, transaction) =>
+            {
+                ExecuteNonQuery(connection, transaction, """
+                    CREATE TABLE IF NOT EXISTS "TdsRates" (
+                        "Id" TEXT NOT NULL CONSTRAINT "PK_TdsRates" PRIMARY KEY,
+                        "Name" TEXT NOT NULL,
+                        "RatePercent" TEXT NOT NULL,
+                        "Description" TEXT NULL,
+                        "IsActive" INTEGER NOT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "CreatedByUserId" TEXT NULL,
+                        "ModifiedAt" TEXT NULL,
+                        "ModifiedByUserId" TEXT NULL,
+                        "RowVersion" BLOB NOT NULL,
+                        "CompanyId" TEXT NOT NULL
+                    )
+                    """);
             })
     ];
 

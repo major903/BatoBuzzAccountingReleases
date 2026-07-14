@@ -35,8 +35,7 @@ public static class SqliteDatabaseGuard
         "Warehouses",
         "AuditLogs",
         "StockBalances",
-        "StockMovements",
-        "TdsRates"
+        "StockMovements"
     ];
 
     public static void ValidateBackup(string databasePath)

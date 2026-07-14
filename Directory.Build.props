@@ -9,10 +9,10 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
-    <Company>BatoBuzz Technologies</Company>
+    <Company>BatoBuzz Technologies Pvt Ltd</Company>
     <Product>BatoBuzz Accounting</Product>
-    <Version>1.0.1</Version>
-    <Copyright>Copyright (c) 2026 BatoBuzz Technologies</Copyright>
+    <Version>1.0.3</Version>
+    <Copyright>Copyright (c) 2026 BatoBuzz Technologies Pvt Ltd</Copyright>
   </PropertyGroup>
 
   <!-- Package versions -->

@@ -198,4 +198,4 @@ ownership, HTTPS, verification, backup, and PostgreSQL instructions.
 
 ## License
 
-Copyright (c) 2026 BatoBuzz Technologies. All rights reserved.
+Copyright (c) 2026 BatoBuzz Technologies Pvt Ltd. All rights reserved.

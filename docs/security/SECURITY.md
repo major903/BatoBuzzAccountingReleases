@@ -86,6 +86,6 @@ remain release-operator responsibilities.
 ## Reporting a vulnerability
 
 Report vulnerabilities privately through the support channel supplied by
-BatoBuzz Technologies. Include the affected version, reproducible steps, and
+BatoBuzz Technologies Pvt Ltd. Include the affected version, reproducible steps, and
 impact, but do not include real credentials, databases, tax records, or personal
 information. Allow the publisher time to investigate before disclosure.

@@ -1,3 +1,17 @@
+# Release Notes - BatoBuzz Accounting v1.0.3
+
+## v1.0.3
+
+- Fixed startup for existing SQLite databases created before configurable TDS rates were added.
+- Added the missing `TdsRates` schema upgrade and retained compatibility with older backups.
+
+# Release Notes - BatoBuzz Accounting v1.0.2
+
+## v1.0.2
+
+- Added the missing architecture documentation.
+- Included `docs/architecture/ARCHITECTURE.md` in the Windows installer.
+
 # Release Notes - BatoBuzz Accounting v1.0.1
 
 ## v1.0.1

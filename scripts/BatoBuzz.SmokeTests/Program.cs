@@ -39,6 +39,9 @@ try
 
     var db = scope.ServiceProvider.GetRequiredService<BatoBuzzDbContext>();
     await db.Database.EnsureCreatedAsync();
+
+    // Simulate a database created before the TDS feature was introduced.
+    await db.Database.ExecuteSqlRawAsync("DROP TABLE \"TdsRates\"");
     SchemaUpgrader.ApplyAll($"Data Source={dbPath};Cache=Shared");
     SchemaUpgrader.ApplyAll($"Data Source={dbPath};Cache=Shared");
     await using (var migrationCheck = new SqliteConnection($"Data Source={dbPath};Cache=Shared"))
@@ -46,8 +49,12 @@ try
         await migrationCheck.OpenAsync();
         await using var command = migrationCheck.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM __BatoBuzzSchemaMigrations";
-        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 4,
+        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 5,
             "SQLite schema upgrades were not applied exactly once.");
+        command.CommandText =
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'TdsRates'";
+        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
+            "SQLite schema upgrade did not create the TDS rates table.");
     }
 
     var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
