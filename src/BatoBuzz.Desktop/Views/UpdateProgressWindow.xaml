@@ -1,0 +1,40 @@
+<Window x:Class="BatoBuzz.Desktop.Views.UpdateProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="BatoBuzz Update"
+        Width="420"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="ToolWindow"
+        ShowInTaskbar="False"
+        Background="{DynamicResource SurfaceBrush}">
+    <Border Background="{DynamicResource CardBrush}" Padding="24" CornerRadius="8">
+        <StackPanel>
+            <TextBlock Text="Updating BatoBuzz"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+            <TextBlock x:Name="StatusText"
+                       Text="Preparing update..."
+                       Margin="0,8,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+            <ProgressBar x:Name="DownloadProgressBar"
+                         Height="12"
+                         Margin="0,18,0,0"
+                         Minimum="0"
+                         Maximum="100"
+                         Foreground="{DynamicResource PrimaryBrush}"
+                         Background="{DynamicResource BackgroundBrush}"/>
+            <TextBlock x:Name="DetailsText"
+                       Margin="0,8,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       FontSize="11"/>
+            <TextBlock Text="Please keep BatoBuzz open until the installer starts."
+                       Margin="0,20,0,0"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       FontSize="11"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+    </Border>
+</Window>

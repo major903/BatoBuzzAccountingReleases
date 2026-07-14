@@ -59,10 +59,12 @@ public sealed class GitHubReleaseUpdateService
 
     public async Task<string> DownloadAndVerifyInstallerAsync(
         AvailableUpdate update,
+        IProgress<UpdateDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(update);
 
+        progress?.Report(UpdateDownloadProgress.Indeterminate("Checking release integrity..."));
         var checksumManifest = await HttpClient.GetStringAsync(
             update.ChecksumUrl,
             cancellationToken).ConfigureAwait(false);
@@ -84,6 +86,12 @@ public sealed class GitHubReleaseUpdateService
 
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken)
                 .ConfigureAwait(false);
+            var totalBytes = response.Content.Headers.ContentLength;
+            progress?.Report(new UpdateDownloadProgress(
+                "Downloading update...",
+                0,
+                totalBytes,
+                totalBytes.HasValue ? 0 : null));
             string actualHash;
             await using (var destination = new FileStream(
                              temporaryPath,
@@ -95,12 +103,40 @@ public sealed class GitHubReleaseUpdateService
             {
                 using var sha256 = SHA256.Create();
                 await using (var hashingStream = new CryptoStream(
-                                 destination,
+                    destination,
                                  sha256,
-                                 CryptoStreamMode.Write,
-                                 leaveOpen: true))
+                    CryptoStreamMode.Write,
+                    leaveOpen: true))
                 {
-                    await source.CopyToAsync(hashingStream, cancellationToken).ConfigureAwait(false);
+                    var buffer = new byte[81920];
+                    long downloadedBytes = 0;
+                    int? lastPercent = null;
+                    int bytesRead;
+                    while ((bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+                    {
+                        await hashingStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken)
+                            .ConfigureAwait(false);
+                        downloadedBytes += bytesRead;
+
+                        var percent = totalBytes is > 0
+                            ? (int)Math.Min(100, downloadedBytes * 100 / totalBytes.Value)
+                            : (int?)null;
+                        if (percent != lastPercent)
+                        {
+                            progress?.Report(new UpdateDownloadProgress(
+                                "Downloading update...",
+                                downloadedBytes,
+                                totalBytes,
+                                percent));
+                            lastPercent = percent;
+                        }
+                    }
+
+                    progress?.Report(new UpdateDownloadProgress(
+                        "Verifying downloaded installer...",
+                        downloadedBytes,
+                        totalBytes,
+                        100));
                     hashingStream.FlushFinalBlock();
                 }
 
@@ -114,6 +150,7 @@ public sealed class GitHubReleaseUpdateService
             }
 
             File.Move(temporaryPath, installerPath, overwrite: true);
+            progress?.Report(new UpdateDownloadProgress("Update is ready to install.", 0, null, 100));
             return installerPath;
         }
         catch
@@ -177,6 +214,16 @@ public sealed class GitHubReleaseUpdateService
         string InstallerFileName,
         string InstallerUrl,
         string ChecksumUrl);
+
+    public sealed record UpdateDownloadProgress(
+        string Status,
+        long DownloadedBytes,
+        long? TotalBytes,
+        int? Percent)
+    {
+        public static UpdateDownloadProgress Indeterminate(string status) =>
+            new(status, 0, null, null);
+    }
 
     private sealed class GitHubRelease
     {

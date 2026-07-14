@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BatoBuzz.Desktop.Services;
+using BatoBuzz.Desktop.Views;
 using BatoBuzz.Domain.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
@@ -455,7 +456,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (install != MessageBoxResult.Yes)
                 return;
 
-            var installerPath = await _updateService.DownloadAndVerifyInstallerAsync(update);
+            var mainWindow = System.Windows.Application.Current.MainWindow;
+            var progressWindow = new UpdateProgressWindow(mainWindow);
+            var progress = new Progress<GitHubReleaseUpdateService.UpdateDownloadProgress>(progressWindow.Report);
+            if (mainWindow is not null)
+                mainWindow.IsEnabled = false;
+
+            progressWindow.Show();
+            string installerPath;
+            try
+            {
+                installerPath = await _updateService.DownloadAndVerifyInstallerAsync(update, progress);
+            }
+            finally
+            {
+                progressWindow.Close();
+                if (mainWindow is not null)
+                {
+                    mainWindow.IsEnabled = true;
+                    mainWindow.Activate();
+                }
+            }
             MessageBox.Show(
                 "The update was downloaded and verified. The installer will open now; BatoBuzz will close so the update can finish.",
                 "BatoBuzz Updates",
