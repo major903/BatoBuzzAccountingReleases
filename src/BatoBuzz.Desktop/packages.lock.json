@@ -662,8 +662,8 @@
       "batobuzz.application": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Contracts": "[1.0.3, )",
-          "BatoBuzz.Domain": "[1.0.3, )"
+          "BatoBuzz.Contracts": "[1.0.4, )",
+          "BatoBuzz.Domain": "[1.0.4, )"
         }
       },
       "batobuzz.contracts": {
@@ -675,9 +675,9 @@
       "batobuzz.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Application": "[1.0.3, )",
-          "BatoBuzz.Contracts": "[1.0.3, )",
-          "BatoBuzz.Domain": "[1.0.3, )",
+          "BatoBuzz.Application": "[1.0.4, )",
+          "BatoBuzz.Contracts": "[1.0.4, )",
+          "BatoBuzz.Domain": "[1.0.4, )",
           "Microsoft.EntityFrameworkCore": "[10.0.9, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.9, )",
           "Microsoft.EntityFrameworkCore.Tools": "[10.0.9, )",

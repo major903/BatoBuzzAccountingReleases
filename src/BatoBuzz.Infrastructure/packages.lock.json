@@ -377,8 +377,8 @@
       "batobuzz.application": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Contracts": "[1.0.3, )",
-          "BatoBuzz.Domain": "[1.0.3, )"
+          "BatoBuzz.Contracts": "[1.0.4, )",
+          "BatoBuzz.Domain": "[1.0.4, )"
         }
       },
       "batobuzz.contracts": {

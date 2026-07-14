@@ -246,6 +246,8 @@
                 <MenuItem Header="_Period Lock" Command="{Binding ShowPeriodLockSettingsCommand}"/>
             </MenuItem>
             <MenuItem Header="_Help">
+                <MenuItem Header="_Check for Updates..." Command="{Binding CheckForUpdatesCommand}"/>
+                <Separator/>
                 <MenuItem Header="_User Guide" Command="{Binding ShowUserGuideCommand}"/>
                 <MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
             </MenuItem>
@@ -339,7 +341,17 @@
                 <TextBlock Text="{Binding CompanyName}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <TextBlock Text="v1.0.0" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding ApplicationVersion}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <Button Content="Check for updates"
+                            Command="{Binding CheckForUpdatesCommand}"
+                            Margin="12,0,0,0"
+                            Padding="4,0"
+                            FontSize="11"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{DynamicResource PrimaryBrush}"/>
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
     </Grid>

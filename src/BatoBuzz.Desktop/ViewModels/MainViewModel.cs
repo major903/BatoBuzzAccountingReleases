@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DesktopSession _session;
     private readonly RememberedLoginService _rememberedLogin;
+    private readonly GitHubReleaseUpdateService _updateService;
     private IServiceScope? _loginScope;
     private bool _disposed;
     private static readonly string DataDirectory = DesktopStoragePaths.DataDirectory;
@@ -59,11 +60,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(
         IServiceScopeFactory scopeFactory,
         DesktopSession session,
-        RememberedLoginService rememberedLogin)
+        RememberedLoginService rememberedLogin,
+        GitHubReleaseUpdateService updateService)
     {
         _scopeFactory = scopeFactory;
         _session = session;
         _rememberedLogin = rememberedLogin;
+        _updateService = updateService;
     }
 
     public void Initialize()
@@ -416,12 +419,64 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private void ShowAbout()
     {
         MessageBox.Show(
-            "BatoBuzz Accounting v1.0.0" + Environment.NewLine +
+            $"BatoBuzz Accounting v{GetCurrentVersion()}" + Environment.NewLine +
             "Offline-first Windows accounting software for Nepal." + Environment.NewLine + Environment.NewLine +
-            "Includes company setup, customers, suppliers, sales, purchase, receipts, payments, journals, inventory, dashboard, reports, backup, and restore workflow.",
+            "Includes company setup, customers, suppliers, sales, purchase, receipts, payments, journals, inventory, dashboard, reports, backup, restore, and tester-controlled updates.",
             "About BatoBuzz Accounting",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            var update = await _updateService.GetAvailableUpdateAsync(GetCurrentVersion());
+            if (update is null)
+            {
+                MessageBox.Show(
+                    $"You are using the latest version (v{GetCurrentVersion()}).",
+                    "BatoBuzz Updates",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var install = MessageBox.Show(
+                $"BatoBuzz Accounting v{update.Version} is available.{Environment.NewLine}{Environment.NewLine}" +
+                $"What's new:{Environment.NewLine}{update.ReleaseNotes}{Environment.NewLine}{Environment.NewLine}" +
+                "Download, verify, and install this update now?",
+                "BatoBuzz Updates",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information,
+                MessageBoxResult.Yes);
+            if (install != MessageBoxResult.Yes)
+                return;
+
+            var installerPath = await _updateService.DownloadAndVerifyInstallerAsync(update);
+            MessageBox.Show(
+                "The update was downloaded and verified. The installer will open now; BatoBuzz will close so the update can finish.",
+                "BatoBuzz Updates",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Unable to check for or install updates.{Environment.NewLine}{Environment.NewLine}{ex.Message}",
+                "BatoBuzz Updates",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            System.Windows.Input.Mouse.OverrideCursor = null;
+        }
     }
 
     [RelayCommand]
@@ -472,6 +527,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (Directory.Exists(folder))
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+    }
+
+    public string ApplicationVersion => $"v{GetCurrentVersion()}";
+
+    private static Version GetCurrentVersion()
+    {
+        var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version
+            ?? typeof(MainViewModel).Assembly.GetName().Version
+            ?? new Version(1, 0, 0);
+        return new Version(version.Major, version.Minor, Math.Max(version.Build, 0));
     }
 
     private void DisposeLoginScope()

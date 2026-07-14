@@ -61,6 +61,7 @@ public partial class App : System.Windows.Application
 
                     services.AddSingleton<DesktopSession>();
                     services.AddSingleton<RememberedLoginService>();
+                    services.AddSingleton<GitHubReleaseUpdateService>();
                     services.AddScoped<DesktopDataService>();
 
                     // MainViewModel must be a singleton: it's the shell bound to the actual

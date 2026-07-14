@@ -1,3 +1,11 @@
+# Release Notes - BatoBuzz Accounting v1.0.4
+
+## v1.0.4
+
+- Added a tester-controlled **Check for Updates** button in Help and the status bar.
+- Shows GitHub release notes before download and requires confirmation before installing.
+- Verifies the downloaded installer against the release SHA-256 manifest before launching it.
+
 # Release Notes - BatoBuzz Accounting v1.0.3
 
 ## v1.0.3
