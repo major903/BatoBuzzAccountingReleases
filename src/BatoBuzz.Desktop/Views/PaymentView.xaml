@@ -76,13 +76,13 @@
 
                         <StackPanel Grid.Column="2" Margin="0,0,0,14">
                             <TextBlock Text="Date" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                            <DatePicker SelectedDate="{Binding PaymentDate}"/>
+                            <DatePicker Text="{Binding PaymentDateText, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBlock Text="{Binding PaymentDateBs, StringFormat='BS: {0}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" Margin="0,2,0,0"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="4" Margin="0,0,0,14">
                             <TextBlock Text="Amount" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                            <TextBox Text="{Binding Amount}"/>
+                            <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                     </Grid>
 
@@ -127,7 +127,7 @@
 
                         <StackPanel Grid.Column="2" Margin="0,0,0,14">
                             <TextBlock Text="TDS Amount" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                            <TextBox Text="{Binding TdsAmount}"/>
+                            <TextBox Text="{Binding TdsAmountText, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="4" Margin="0,0,0,14">

@@ -140,8 +140,6 @@
                             
                             <Border Grid.Row="1"
                                     Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
                                     Padding="{TemplateBinding Padding}">
                                 <ContentPresenter x:Name="PART_SelectedContentHost"
                                                   ContentSource="SelectedContent"
@@ -180,7 +178,7 @@
                         <TextBlock Text="Sales, purchase, inventory, ledgers and reports" FontSize="11" Foreground="{DynamicResource ShellHeaderMutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
-                <Border Grid.Column="2" Background="#203154" CornerRadius="8" Padding="12,7" VerticalAlignment="Center">
+                <Border Grid.Column="2" Background="#203154" CornerRadius="8" Padding="12,7" Margin="0,0,20,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding CompanyName}" Foreground="{DynamicResource WhiteBrush}" FontWeight="Bold" Margin="0,0,18,0" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding UserName}" Foreground="{DynamicResource ShellHeaderMutedBrush}" Margin="0,0,18,0" VerticalAlignment="Center"/>
@@ -260,7 +258,7 @@
                         SelectedItem="{Binding SelectedTab}"
                         BorderThickness="1"
                         BorderBrush="{DynamicResource BorderBrush}"
-                        Background="{DynamicResource SurfaceBrush}">
+                        Background="{DynamicResource BackgroundBrush}">
                 <TabControl.Style>
                     <Style TargetType="TabControl">
                         <Setter Property="Visibility" Value="Collapsed"/>
