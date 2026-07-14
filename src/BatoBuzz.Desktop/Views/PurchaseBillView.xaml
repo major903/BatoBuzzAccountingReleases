@@ -66,8 +66,12 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8" IsEnabled="{Binding IsDocumentEditable}">
-            <DataGrid ItemsSource="{Binding Lines}" AutoGenerateColumns="False" CanUserAddRows="False">
+        <DataGrid Grid.Row="2"
+                  Margin="0,0,0,8"
+                  ItemsSource="{Binding Lines}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  IsEnabled="{Binding IsDocumentEditable}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="#" Binding="{Binding LineNumber}" Width="40"/>
                     <DataGridTemplateColumn Header="Item" Width="160">
@@ -98,10 +102,9 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        </DataGrid>
 
-        <Border Grid.Row="3" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+        <Grid Grid.Row="3" Margin="0,0,0,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -128,7 +131,7 @@
                     </Grid>
                 </StackPanel>
             </Grid>
-        </Border>
+        </Grid>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
             <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>

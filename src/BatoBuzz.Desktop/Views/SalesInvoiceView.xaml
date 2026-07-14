@@ -64,7 +64,7 @@
         </Border>
 
         <!-- Line Items -->
-        <Border Grid.Row="2" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8" IsEnabled="{Binding IsDocumentEditable}">
+        <Grid Grid.Row="2" Margin="0,0,0,8" IsEnabled="{Binding IsDocumentEditable}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -104,10 +104,10 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
-        </Border>
+        </Grid>
 
         <!-- Totals -->
-        <Border Grid.Row="3" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+        <Grid Grid.Row="3" Margin="0,0,0,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -134,7 +134,7 @@
                     </Grid>
                 </StackPanel>
             </Grid>
-        </Border>
+        </Grid>
 
         <!-- Actions -->
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
