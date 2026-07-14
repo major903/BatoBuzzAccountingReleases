@@ -1,6 +1,6 @@
 ; BatoBuzz Accounting - Inno Setup Installer Script
 #define MyAppName "BatoBuzz Accounting"
-#define MyAppVersion "1.0.4"
+#define MyAppVersion "1.0.5"
 #define MyAppPublisher "BatoBuzz Technologies Pvt Ltd"
 #define MyAppURL "https://batobuzz.com"
 #define MyAppExeName "BatoBuzz.Desktop.exe"
