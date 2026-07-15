@@ -7,9 +7,9 @@
         xmlns:views="clr-namespace:BatoBuzz.Desktop.Views"
         mc:Ignorable="d"
         Title="" 
-        Icon="/Assets/TransparentTitleIcon.ico"
-        Height="760" Width="1180"
-        MinHeight="680" MinWidth="1024"
+        Icon="/Assets/BatoBuzz.ico"
+        Height="820" Width="1280"
+        MinHeight="720" MinWidth="1050"
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResize"
         WindowState="Maximized"
@@ -157,34 +157,43 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
-        <Border Grid.Row="0" Background="{DynamicResource ShellHeaderBrush}" Height="52">
+        <Border Grid.Row="0" Background="{DynamicResource ShellHeaderBrush}" Height="72">
             <Grid x:Name="AppTitleBar">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0">
-                    <Border Width="34" Height="34" CornerRadius="7" Background="{DynamicResource PrimaryBrush}" Margin="0,0,12,0">
-                        <TextBlock Text="B" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource WhiteBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="22,0">
+                    <Border Width="42" Height="42" CornerRadius="11" Background="{DynamicResource PrimaryBrush}" Margin="0,0,13,0">
+                        <TextBlock Text="B" FontSize="23" FontWeight="Bold" Foreground="{DynamicResource WhiteBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel>
-                        <TextBlock Text="BatoBuzz Accounting" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource WhiteBrush}"/>
-                        <TextBlock Text="Sales, purchase, inventory, ledgers and reports" FontSize="11" Foreground="{DynamicResource ShellHeaderMutedBrush}"/>
+                        <TextBlock Text="BatoBuzz" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource WhiteBrush}"/>
+                        <TextBlock Text="ACCOUNTING WORKSPACE" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ShellHeaderMutedBrush}"/>
                     </StackPanel>
                 </StackPanel>
-                <Border Grid.Column="2" Background="#203154" CornerRadius="8" Padding="12,7" Margin="0,0,20,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding CompanyName}" Foreground="{DynamicResource WhiteBrush}" FontWeight="Bold" Margin="0,0,18,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding UserName}" Foreground="{DynamicResource ShellHeaderMutedBrush}" Margin="0,0,18,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding CurrentDate}" Foreground="{DynamicResource ShellHeaderMutedBrush}" VerticalAlignment="Center"/>
+                <Border Grid.Column="1" Background="#17233B" BorderBrush="#293650" BorderThickness="1" CornerRadius="9" Padding="16,8" Margin="28,0" VerticalAlignment="Center" HorizontalAlignment="Center" MinWidth="280">
+                    <StackPanel>
+                        <TextBlock Text="CURRENT COMPANY" Foreground="{DynamicResource ShellHeaderMutedBrush}" FontSize="9.5" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding CompanyName}" Foreground="{DynamicResource WhiteBrush}" FontWeight="SemiBold" FontSize="13.5" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,22,0" VerticalAlignment="Center">
+                    <StackPanel Margin="0,0,14,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding UserName}" Foreground="{DynamicResource WhiteBrush}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                        <TextBlock Text="{Binding CurrentDate}" Foreground="{DynamicResource ShellHeaderMutedBrush}" FontSize="11" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                    <Border Width="38" Height="38" CornerRadius="19" Background="{DynamicResource PrimaryBrush}">
+                        <TextBlock Text="U" Foreground="{DynamicResource WhiteBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -251,14 +260,45 @@
             </MenuItem>
         </Menu>
 
+        <!-- Frequently used workflows stay one click away. -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="18,7">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsAuthenticated}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Left" Text="QUICK ACCESS" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Overview" Command="{Binding ShowDashboardCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="+ Sales invoice" Command="{Binding ShowSalesInvoiceCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="+ Purchase bill" Command="{Binding ShowPurchaseBillCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="Receipt" Command="{Binding ShowReceiptCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="Payment" Command="{Binding ShowPaymentCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="Inventory" Command="{Binding ShowInventoryCommand}" Style="{DynamicResource ShellNavButton}" Margin="0,0,4,0"/>
+                        <Button Content="Reports" Command="{Binding ShowReportsCommand}" Style="{DynamicResource ShellNavButton}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
         <!-- Content Area -->
-        <Grid Grid.Row="2" Margin="18">
+        <Grid Grid.Row="3" Margin="22,16,22,18">
             <!-- TabControl visible when Authenticated -->
             <TabControl ItemsSource="{Binding ActiveTabs}"
                         SelectedItem="{Binding SelectedTab}"
-                        BorderThickness="1"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        Background="{DynamicResource BackgroundBrush}">
+                        BorderThickness="0"
+                        Background="Transparent">
                 <TabControl.Style>
                     <Style TargetType="TabControl">
                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -330,13 +370,31 @@
         </Grid>
 
         <!-- Status Bar -->
-        <StatusBar Grid.Row="3" Background="{DynamicResource SurfaceBrush}">
+        <StatusBar Grid.Row="4" Background="{DynamicResource SurfaceBrush}" MinHeight="32">
             <StatusBarItem>
-                <TextBlock Text="Ready" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Ready" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                </StackPanel>
             </StatusBarItem>
             <Separator/>
             <StatusBarItem>
                 <TextBlock Text="{Binding CompanyName}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock Text="{Binding AutomaticBackupStatus}" FontSize="11">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAutomaticBackupWarning}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">

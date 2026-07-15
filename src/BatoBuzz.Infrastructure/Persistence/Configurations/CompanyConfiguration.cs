@@ -247,6 +247,16 @@ public class StockBalanceConfiguration : IEntityTypeConfiguration<StockBalance>
     }
 }
 
+public class DocumentSequenceConfiguration : IEntityTypeConfiguration<DocumentSequence>
+{
+    public void Configure(EntityTypeBuilder<DocumentSequence> builder)
+    {
+        builder.HasKey(e => new { e.CompanyId, e.SequenceKey });
+        builder.Property(e => e.SequenceKey).HasMaxLength(32);
+        builder.Property(e => e.LastValue).IsRequired();
+    }
+}
+
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)

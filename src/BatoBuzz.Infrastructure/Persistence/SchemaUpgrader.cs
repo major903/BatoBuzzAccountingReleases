@@ -148,6 +148,19 @@ public static class SchemaUpgrader
                         "CompanyId" TEXT NOT NULL
                     )
                     """);
+            }),
+        new(
+            "20260715_006_document_sequences",
+            (connection, transaction) =>
+            {
+                ExecuteNonQuery(connection, transaction, """
+                    CREATE TABLE IF NOT EXISTS "DocumentSequences" (
+                        "CompanyId" TEXT NOT NULL,
+                        "SequenceKey" TEXT NOT NULL,
+                        "LastValue" INTEGER NOT NULL,
+                        CONSTRAINT "PK_DocumentSequences" PRIMARY KEY ("CompanyId", "SequenceKey")
+                    )
+                    """);
             })
     ];
 

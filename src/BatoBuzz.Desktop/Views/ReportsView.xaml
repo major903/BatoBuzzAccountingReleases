@@ -11,19 +11,30 @@
         <!-- Report Controls -->
         <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Reports" Style="{DynamicResource ViewTitle}"/>
+                    <TextBlock Text="Choose a report and period, then generate it before exporting or printing." Style="{DynamicResource ViewSubtitle}" Margin="0,4,0,2"/>
+                    <TextBlock Text="Generating report…" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,10"/>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="Report" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
@@ -49,6 +60,7 @@
                     <Button Content="Excel" Command="{Binding ExportExcelCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,4,0" Padding="12,4"/>
                     <Button Content="Print" Click="PrintReport_OnClick" Style="{DynamicResource SecondaryButton}" Padding="12,4"/>
                 </StackPanel>
+                </Grid>
             </Grid>
         </Border>
 

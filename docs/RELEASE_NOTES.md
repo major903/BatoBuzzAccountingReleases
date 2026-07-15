@@ -1,3 +1,12 @@
+# Release Notes - BatoBuzz Accounting
+
+## v1.0.8
+
+- Improved accounting posting, correction, and inventory safeguards.
+- Added automatic local backup support and schema-upgrade protections.
+- Refined the desktop dashboard, reports, login, data-entry screens, and theme styling.
+- Added a tester guide and release-readiness audit record.
+
 # Release Notes - BatoBuzz Accounting v1.0.4
 
 ## v1.0.4

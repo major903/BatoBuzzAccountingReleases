@@ -2,6 +2,7 @@ using BatoBuzz.Application.Interfaces;
 using BatoBuzz.Domain.Entities;
 using BatoBuzz.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Linq.Expressions;
 
 namespace BatoBuzz.Infrastructure.Persistence;
@@ -38,6 +39,61 @@ public abstract class Repository<T> : IRepository<T> where T : class
     }
     public virtual async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null) =>
         predicate == null ? await _dbSet.CountAsync() : await _dbSet.CountAsync(predicate);
+
+    protected async Task<long> AllocateNextDocumentNumberAsync(Guid companyId, string sequenceKey)
+    {
+        var connection = _context.Database.GetDbConnection();
+        var wasOpen = connection.State == System.Data.ConnectionState.Open;
+        IDbContextTransaction? transaction = null;
+        var ownsTransaction = false;
+
+        try
+        {
+            if (!wasOpen)
+                await connection.OpenAsync();
+
+            transaction = _context.Database.CurrentTransaction;
+            ownsTransaction = transaction == null;
+            if (ownsTransaction)
+                transaction = await _context.Database.BeginTransactionAsync();
+            var activeTransaction = transaction
+                ?? throw new InvalidOperationException("A document-number transaction could not be started.");
+
+            await using var command = connection.CreateCommand();
+            command.Transaction = activeTransaction.GetDbTransaction();
+            command.CommandText = """
+                INSERT INTO "DocumentSequences" ("CompanyId", "SequenceKey", "LastValue")
+                VALUES (@companyId, @sequenceKey, 1)
+                ON CONFLICT ("CompanyId", "SequenceKey")
+                DO UPDATE SET "LastValue" = "LastValue" + 1
+                RETURNING "LastValue";
+                """;
+
+            var companyParameter = command.CreateParameter();
+            companyParameter.ParameterName = "@companyId";
+            companyParameter.Value = companyId;
+            command.Parameters.Add(companyParameter);
+            var keyParameter = command.CreateParameter();
+            keyParameter.ParameterName = "@sequenceKey";
+            keyParameter.Value = sequenceKey;
+            command.Parameters.Add(keyParameter);
+
+            var nextValue = Convert.ToInt64(await command.ExecuteScalarAsync(),
+                System.Globalization.CultureInfo.InvariantCulture);
+
+            if (ownsTransaction)
+                await activeTransaction.CommitAsync();
+
+            return nextValue;
+        }
+        finally
+        {
+            if (transaction != null && ownsTransaction)
+                await transaction.DisposeAsync();
+            if (!wasOpen)
+                await connection.CloseAsync();
+        }
+    }
 }
 
 public class CompanyRepository : Repository<Company>, ICompanyRepository
@@ -116,9 +172,6 @@ public class JournalEntryRepository : Repository<JournalEntry>, IJournalEntryRep
 
     public async Task<string> GetNextEntryNumberAsync(Guid companyId, int voucherType)
     {
-        var count = await _dbSet.CountAsync(j =>
-            j.CompanyId == companyId && (int)j.VoucherType == voucherType);
-
         var prefix = voucherType switch
         {
             1 => "SI",
@@ -137,7 +190,9 @@ public class JournalEntryRepository : Repository<JournalEntry>, IJournalEntryRep
             _ => "JV"
         };
 
-        return $"{prefix}-{count + 1:D6}";
+        var nextNumber = await AllocateNextDocumentNumberAsync(
+            companyId, $"Journal:{voucherType}");
+        return $"{prefix}-{nextNumber:D6}";
     }
 
     public async Task<JournalLine?> GetLineByIdAsync(Guid lineId) =>
@@ -205,8 +260,8 @@ public class SalesInvoiceRepository : Repository<SalesInvoice>, ISalesInvoiceRep
 
     public async Task<string> GetNextInvoiceNumberAsync(Guid companyId)
     {
-        var count = await _dbSet.CountAsync(i => i.CompanyId == companyId);
-        return $"INV-{count + 1:D6}";
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "SalesInvoice");
+        return $"INV-{nextNumber:D6}";
     }
 }
 
@@ -239,8 +294,8 @@ public class ReceiptRepository : Repository<Receipt>, IReceiptRepository
 
     public async Task<string> GetNextReceiptNumberAsync(Guid companyId)
     {
-        var count = await _dbSet.CountAsync(r => r.CompanyId == companyId);
-        return $"RCT-{count + 1:D6}";
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "Receipt");
+        return $"RCT-{nextNumber:D6}";
     }
 }
 
@@ -272,8 +327,8 @@ public class PurchaseBillRepository : Repository<PurchaseBill>, IPurchaseBillRep
 
     public async Task<string> GetNextBillNumberAsync(Guid companyId)
     {
-        var count = await _dbSet.CountAsync(b => b.CompanyId == companyId);
-        return $"BILL-{count + 1:D6}";
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "PurchaseBill");
+        return $"BILL-{nextNumber:D6}";
     }
 }
 
@@ -306,8 +361,8 @@ public class PaymentRepository : Repository<Payment>, IPaymentRepository
 
     public async Task<string> GetNextPaymentNumberAsync(Guid companyId)
     {
-        var count = await _dbSet.CountAsync(p => p.CompanyId == companyId);
-        return $"PAY-{count + 1:D6}";
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "Payment");
+        return $"PAY-{nextNumber:D6}";
     }
 }
 

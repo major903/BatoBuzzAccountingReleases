@@ -377,8 +377,8 @@
       "batobuzz.application": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Contracts": "[1.0.4, )",
-          "BatoBuzz.Domain": "[1.0.4, )"
+          "BatoBuzz.Contracts": "[1.0.8, )",
+          "BatoBuzz.Domain": "[1.0.8, )"
         }
       },
       "batobuzz.contracts": {
@@ -386,18 +386,6 @@
       },
       "batobuzz.domain": {
         "type": "Project"
-      }
-    },
-    "net10.0/win-x64": {
-      "SourceGear.sqlite3": {
-        "type": "Transitive",
-        "resolved": "3.50.4.5",
-        "contentHash": "UtnipXhJYZKQOQIfpws/msLK7IRhMplE1CZCaZLIQXRnGD474QVpO/J9nMlQQY8NZueGz1aidjoxDRnrC1NT3Q=="
-      },
-      "System.Security.Cryptography.Pkcs": {
-        "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "aud6Ox9eSPayMBNu6qL+Zk7yDB6ShrRxg1aMJ1uPqFTGAFVisrjFeKj6RE9SimjNKcbl+chwmiYIK4b3hvc61A=="
       }
     }
   }

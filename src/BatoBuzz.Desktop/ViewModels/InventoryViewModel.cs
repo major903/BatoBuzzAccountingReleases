@@ -63,10 +63,6 @@ public partial class InventoryViewModel : ObservableObject
     public string[] MovementTypes { get; } =
     {
         "Opening Stock",
-        "Purchase In",
-        "Sale Out",
-        "Purchase Return",
-        "Sales Return",
         "Damage",
         "Write Off"
     };
@@ -228,10 +224,6 @@ public partial class InventoryViewModel : ObservableObject
 
     private static int MovementTypeToInt(string value) => value switch
     {
-        "Purchase In" => 2,
-        "Sale Out" => 3,
-        "Purchase Return" => 4,
-        "Sales Return" => 5,
         "Damage" => 9,
         "Write Off" => 10,
         _ => 1

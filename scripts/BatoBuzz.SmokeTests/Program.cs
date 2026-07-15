@@ -17,6 +17,7 @@ var backupPath = Path.Combine(Path.GetTempPath(), $"batobuzz-smoke-backup-{Guid.
 var invalidBackupPath = Path.Combine(Path.GetTempPath(), $"batobuzz-smoke-invalid-{Guid.NewGuid():N}.db");
 var reportExcelPath = Path.Combine(Path.GetTempPath(), $"batobuzz-smoke-report-{Guid.NewGuid():N}.xlsx");
 var reportPdfPath = Path.Combine(Path.GetTempPath(), $"batobuzz-smoke-report-{Guid.NewGuid():N}.pdf");
+var automaticBackupDataDirectory = Path.Combine(Path.GetTempPath(), $"batobuzz-smoke-auto-{Guid.NewGuid():N}");
 
 try
 {
@@ -49,12 +50,16 @@ try
         await migrationCheck.OpenAsync();
         await using var command = migrationCheck.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM __BatoBuzzSchemaMigrations";
-        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 5,
+        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 6,
             "SQLite schema upgrades were not applied exactly once.");
         command.CommandText =
             "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'TdsRates'";
         Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
             "SQLite schema upgrade did not create the TDS rates table.");
+        command.CommandText =
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'DocumentSequences'";
+        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 1,
+            "SQLite schema upgrade did not create the document sequence table.");
     }
 
     var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
@@ -670,6 +675,32 @@ try
         "Standalone stock transfer was accepted.");
 
     await ExpectThrowsAsync<InvalidOperationException>(
+        () => inventory.RecordStockMovementAsync(new CreateStockMovementRequest
+        {
+            CompanyId = company.Id,
+            ItemId = item.Id,
+            WarehouseId = warehouse.Id,
+            MovementDate = DateTime.Today,
+            MovementType = (int)MovementType.PurchaseIn,
+            Quantity = 1,
+            UnitCost = 100
+        }, userId),
+        "Standalone purchase receipt was accepted without a supplier document.");
+
+    await ExpectThrowsAsync<InvalidOperationException>(
+        () => inventory.RecordStockMovementAsync(new CreateStockMovementRequest
+        {
+            CompanyId = company.Id,
+            ItemId = item.Id,
+            WarehouseId = warehouse.Id,
+            MovementDate = DateTime.Today.AddDays(-1),
+            MovementType = (int)MovementType.Damage,
+            Quantity = 1,
+            UnitCost = 0
+        }, userId),
+        "Backdated stock movement was accepted after later stock activity.");
+
+    await ExpectThrowsAsync<InvalidOperationException>(
         () => inventory.CreateItemAsync(new CreateItemRequest
         {
             CompanyId = company.Id,
@@ -978,14 +1009,15 @@ try
     await companyService.SetPeriodLockDateAsync(company.Id, null, userId);
 
     var rolloverDate = company.FinancialYearEnd.AddDays(1);
+    var currentYearBeforeReport = await companyService.GetCurrentFinancialYearAsync(company.Id)
+        ?? throw new InvalidOperationException("Current financial year was not available before the report.");
     var rolloverBalanceSheet = await accounting.GetBalanceSheetAsync(company.Id, rolloverDate);
     Require(rolloverBalanceSheet.NetAssets == 0m,
-        "Balance sheet did not remain balanced after automatic financial-year rollover.");
-    var rolledCurrentYear = await companyService.GetCurrentFinancialYearAsync(company.Id)
-        ?? throw new InvalidOperationException("Current financial year was not available after rollover.");
-    Require(rolloverDate.Date >= rolledCurrentYear.StartDate.Date
-            && rolloverDate.Date <= rolledCurrentYear.EndDate.Date,
-        "Next financial year was not created and advanced to current.");
+        "Balance sheet did not remain balanced for a future report date.");
+    var currentYearAfterReport = await companyService.GetCurrentFinancialYearAsync(company.Id)
+        ?? throw new InvalidOperationException("Current financial year was not available after the report.");
+    Require(currentYearAfterReport.Id == currentYearBeforeReport.Id,
+        "A balance sheet report changed the current financial year.");
 
     SqliteDatabaseGuard.CreateValidatedBackup(dbPath, backupPath);
     Require(File.Exists(backupPath) && new FileInfo(backupPath).Length > 0,
@@ -995,6 +1027,24 @@ try
     await ExpectThrowsAsync<Exception>(
         () => Task.Run(() => SqliteDatabaseGuard.ValidateBackup(invalidBackupPath)),
         "An invalid backup file passed validation.");
+
+    Directory.CreateDirectory(automaticBackupDataDirectory);
+    var automaticBackupDatabasePath = Path.Combine(automaticBackupDataDirectory, "BatoBuzz.db");
+    var automaticBackupDirectory = Path.Combine(automaticBackupDataDirectory, "Automatic");
+    SqliteDatabaseGuard.CreateValidatedBackup(dbPath, automaticBackupDatabasePath);
+    var automaticBackupService = new AutomaticBackupService(
+        automaticBackupDatabasePath,
+        automaticBackupDirectory);
+    var firstAutomaticBackup = automaticBackupService.EnsureDailyBackup();
+    Require(firstAutomaticBackup.Status == AutomaticBackupStatus.Created
+            && !string.IsNullOrWhiteSpace(firstAutomaticBackup.BackupPath)
+            && File.Exists(firstAutomaticBackup.BackupPath),
+        $"The automatic daily backup was not created. Status: {firstAutomaticBackup.Status}; Path: {firstAutomaticBackup.BackupPath ?? "(none)"}.");
+    SqliteDatabaseGuard.ValidateBackup(firstAutomaticBackup.BackupPath!);
+    var repeatedAutomaticBackup = automaticBackupService.EnsureDailyBackup();
+    Require(repeatedAutomaticBackup.Status == AutomaticBackupStatus.Current
+            && string.Equals(repeatedAutomaticBackup.BackupPath, firstAutomaticBackup.BackupPath, StringComparison.OrdinalIgnoreCase),
+        "The automatic backup created more than one backup for the same day.");
 
     const string exportHtml = "<html><body><h2>Smoke Report</h2><table><tr><th>Account</th><th>Amount</th></tr><tr><td>Cash</td><td>123.45</td></tr></table><h3>Balanced</h3></body></html>";
     var reportsType = typeof(ReportsViewModel);
@@ -1040,6 +1090,8 @@ finally
         if (File.Exists(testArtifact))
             File.Delete(testArtifact);
     }
+    if (Directory.Exists(automaticBackupDataDirectory))
+        Directory.Delete(automaticBackupDataDirectory, recursive: true);
 }
 
 static async Task ExpectThrowsAsync<TException>(Func<Task> action, string message)

@@ -5,19 +5,27 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+        <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Padding="22,18" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Customers" Style="{DynamicResource ViewTitle}"/>
+                <TextBlock Text="Keep customer contact details and credit limits in one place." Style="{DynamicResource ViewSubtitle}" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
             <Button Content="+ New Customer" Command="{Binding AddNewCommand}" Style="{DynamicResource PrimaryButton}" Margin="0,0,8,0"/>
             <Button Content="Edit" Command="{Binding EditCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
-            <TextBox Text="{Binding SearchText}" Width="200" Margin="0,0,8,0"/>
+            <TextBox Text="{Binding SearchText}" Width="260" Margin="0,0,8,0" ToolTip="Search customers by name"/>
             <Button Content="Search" Command="{Binding SearchCommand}" Style="{DynamicResource SecondaryButton}"/>
         </StackPanel>
 
         <!-- Customer List -->
-        <Border Grid.Row="1" Style="{DynamicResource SectionPanel}" Padding="12" Margin="0,0,0,8">
+        <Border Grid.Row="2" Style="{DynamicResource SectionPanel}" Padding="12" Margin="0,0,0,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -72,7 +80,7 @@
             </Grid>
         </Border>
 
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" AutoGenerateColumns="False" IsReadOnly="True">
+        <DataGrid Grid.Row="3" ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" AutoGenerateColumns="False" IsReadOnly="True">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*"/>
                 <DataGridTextColumn Header="City" Binding="{Binding City}" Width="*"/>

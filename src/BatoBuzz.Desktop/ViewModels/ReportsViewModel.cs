@@ -84,12 +84,33 @@ public partial class ReportsViewModel : ObservableObject
     partial void OnSelectedReportChanged(string value) =>
         IsLedgerFilterVisible = value == "General Ledger";
 
-    [RelayCommand]
+    partial void OnIsLoadingChanged(bool value)
+    {
+        GenerateReportCommand.NotifyCanExecuteChanged();
+        ExportPdfCommand.NotifyCanExecuteChanged();
+        ExportExcelCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnReportHtmlChanged(string value)
+    {
+        ExportPdfCommand.NotifyCanExecuteChanged();
+        ExportExcelCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanGenerateReport() => !IsLoading;
+
+    [RelayCommand(CanExecute = nameof(CanGenerateReport))]
     private async Task GenerateReport()
     {
+        if (ToDate.Date < FromDate.Date)
+        {
+            ReportHtml = WrapHtml("<h2>Choose a valid date range</h2><p>The end date must be the same as or later than the start date.</p>");
+            return;
+        }
+
         if (!_session.CompanyId.HasValue)
         {
-            ReportHtml = WrapHtml("<h2>No company selected</h2>");
+            ReportHtml = WrapHtml("<h2>No company selected</h2><p>Select or create a company, then generate the report again.</p>");
             return;
         }
 
@@ -228,16 +249,11 @@ public partial class ReportsViewModel : ObservableObject
             $"<h3>Total Inflow {Money(totalInflow)} | Total Outflow {Money(totalOutflow)} | Net Flow {Money(totalInflow - totalOutflow)}</h3>";
     }
 
-    [RelayCommand]
+    private bool CanExport() => !string.IsNullOrWhiteSpace(ReportHtml) && !IsLoading;
+
+    [RelayCommand(CanExecute = nameof(CanExport))]
     private void ExportPdf()
     {
-        if (string.IsNullOrWhiteSpace(ReportHtml))
-        {
-            MessageBox.Show("Generate a report before exporting.", "BatoBuzz Reports",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
         var dialog = new SaveFileDialog
         {
             Title = "Export report as PDF",
@@ -248,22 +264,22 @@ public partial class ReportsViewModel : ObservableObject
         if (dialog.ShowDialog() != true)
             return;
 
-        var report = ParseHtmlReport(ReportHtml);
-        WriteReportPdf(report, dialog.FileName);
-        MessageBox.Show($"Report exported:{Environment.NewLine}{dialog.FileName}", "BatoBuzz Reports",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        try
+        {
+            var report = ParseHtmlReport(ReportHtml);
+            WriteReportPdf(report, dialog.FileName);
+            MessageBox.Show($"PDF report exported:{Environment.NewLine}{dialog.FileName}", "BatoBuzz Reports",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            ShowExportError(ex);
+        }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanExport))]
     private void ExportExcel()
     {
-        if (string.IsNullOrWhiteSpace(ReportHtml))
-        {
-            MessageBox.Show("Generate a report before exporting.", "BatoBuzz Reports",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
         var dialog = new SaveFileDialog
         {
             Title = "Export report as Excel",
@@ -274,11 +290,25 @@ public partial class ReportsViewModel : ObservableObject
         if (dialog.ShowDialog() != true)
             return;
 
-        var report = ParseHtmlReport(ReportHtml);
-        WriteReportExcel(report, dialog.FileName);
-        MessageBox.Show($"Report exported:{Environment.NewLine}{dialog.FileName}", "BatoBuzz Reports",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        try
+        {
+            var report = ParseHtmlReport(ReportHtml);
+            WriteReportExcel(report, dialog.FileName);
+            MessageBox.Show($"Excel report exported:{Environment.NewLine}{dialog.FileName}", "BatoBuzz Reports",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            ShowExportError(ex);
+        }
     }
+
+    private static void ShowExportError(Exception exception) =>
+        MessageBox.Show(
+            $"The report could not be exported. Check that the chosen file is not open in another program and that you can write to its folder.{Environment.NewLine}{Environment.NewLine}{exception.Message}",
+            "BatoBuzz Reports",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
 
     private async Task<string> TrialBalanceHtml(Guid companyId)
     {

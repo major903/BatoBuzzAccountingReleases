@@ -21,7 +21,6 @@ public class PurchaseService : IPurchaseService
 
     public async Task<PurchaseBillDto> CreateBillAsync(CreatePurchaseBillRequest request, Guid userId)
     {
-        var billNumber = await _unitOfWork.PurchaseBills.GetNextBillNumberAsync(request.CompanyId);
         await ValidateCompanyBranchAsync(request.CompanyId, request.BranchId);
         _ = await GetSupplierForCompanyAsync(request.CompanyId, request.SupplierId);
         if (request.Lines.Count == 0)
@@ -30,22 +29,32 @@ public class PurchaseService : IPurchaseService
             request.CompanyId,
             request.Lines.Select(l => (l.ItemId, l.WarehouseId, l.Description)));
 
-        var bill = PurchaseBill.Create(
-            request.CompanyId, request.SupplierId, billNumber,
-            request.BillDate, request.DueDate, userId,
-            request.SupplierInvoiceNumber, request.Reference, request.Narration,
-            request.IsVatApplicable, request.VatRate, request.BranchId);
-
-        foreach (var line in request.Lines)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            bill.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
-                line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+            var billNumber = await _unitOfWork.PurchaseBills.GetNextBillNumberAsync(request.CompanyId);
+            var bill = PurchaseBill.Create(
+                request.CompanyId, request.SupplierId, billNumber,
+                request.BillDate, request.DueDate, userId,
+                request.SupplierInvoiceNumber, request.Reference, request.Narration,
+                request.IsVatApplicable, request.VatRate, request.BranchId);
+
+            foreach (var line in request.Lines)
+            {
+                bill.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                    line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+            }
+
+            await _unitOfWork.PurchaseBills.AddAsync(bill);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return MapBillToDto(bill);
         }
-
-        await _unitOfWork.PurchaseBills.AddAsync(bill);
-        await _unitOfWork.SaveChangesAsync();
-
-        return MapBillToDto(bill);
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     public async Task<PurchaseBillDto> PostBillAsync(Guid billId, Guid userId)
@@ -494,6 +503,9 @@ public class PurchaseService : IPurchaseService
             if (companyWarehouses.All(w => w.Id != warehouseId))
                 throw new InvalidOperationException("Purchase warehouse does not belong to the bill company.");
 
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                item.Id, warehouseId, bill.BillDate, "post this purchase bill");
+
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(item.Id, warehouseId);
             if (balance == null)
             {
@@ -536,6 +548,8 @@ public class PurchaseService : IPurchaseService
             bill.CompanyId, bill.Id, "PurchaseBill");
         foreach (var movement in movements.Where(m => m.MovementType == MovementType.PurchaseIn))
         {
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                movement.ItemId, movement.WarehouseId, correctionDate, "cancel this purchase bill");
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(
                 movement.ItemId, movement.WarehouseId)
                 ?? throw new InvalidOperationException("The stock balance needed to cancel this bill was not found.");

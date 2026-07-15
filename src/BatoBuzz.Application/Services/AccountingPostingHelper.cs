@@ -40,6 +40,31 @@ internal sealed class AccountingPostingHelper
                 $"Cannot post — {entryDate:yyyy-MM-dd} falls on or before the period lock date ({company.PeriodLockDate.Value:yyyy-MM-dd}).");
     }
 
+    /// <summary>
+    /// Weighted-average inventory is maintained as a current balance. Allowing a
+    /// movement before an existing movement would make both its cost and every
+    /// stored balance snapshot after it unreliable. Require a chronological
+    /// append unless a full inventory revaluation workflow is introduced.
+    /// </summary>
+    public async Task EnsureStockDateIsNotBackdatedAsync(
+        Guid itemId,
+        Guid warehouseId,
+        DateTime movementDate,
+        string operationName)
+    {
+        var laterMovement = (await _unitOfWork.StockMovements
+                .GetItemWarehouseChronologyAsync(itemId, warehouseId))
+            .LastOrDefault(movement => movement.MovementDate.Date > movementDate.Date);
+
+        if (laterMovement != null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot {operationName} dated {movementDate:yyyy-MM-dd} because stock activity " +
+                $"already exists on {laterMovement.MovementDate:yyyy-MM-dd}. " +
+                "Post it on or after the latest stock activity date.");
+        }
+    }
+
     public async Task<JournalEntry> CreateAndPostJournalAsync(
         Guid companyId,
         DateTime entryDate,

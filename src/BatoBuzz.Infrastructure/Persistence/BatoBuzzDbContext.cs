@@ -35,6 +35,7 @@ public class BatoBuzzDbContext : DbContext
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
@@ -73,6 +74,7 @@ public class BatoBuzzDbContext : DbContext
         modelBuilder.ApplyConfiguration(new Configurations.PurchaseBillConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ItemConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.StockBalanceConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.DocumentSequenceConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.UserConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.RoleConfiguration());
 

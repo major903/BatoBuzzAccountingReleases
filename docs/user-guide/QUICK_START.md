@@ -1,5 +1,7 @@
 # BatoBuzz Accounting Quick Start
 
+For a simple step-by-step test plan, see the [Tester Guide](TESTER_GUIDE.md).
+
 ## Before installation
 
 The supported desktop target is 64-bit Windows 10 or Windows 11. A release made
@@ -86,6 +88,12 @@ an approved location and remove temporary copies when no longer needed.
 Use **File > Backup** regularly and before every update or large import. Keep
 at least one encrypted copy outside the computer. Record the backup date and
 periodically test a copy on a non-production machine.
+
+BatoBuzz also creates one validated automatic backup each day while you are
+signed in. These are kept separately in `Documents\BatoBuzz Backups\Automatic`;
+the newest 14 daily backups are retained. The status bar warns you only when an
+automatic backup needs attention. Manual backups remain recommended before an
+update, restore, or major accounting change.
 
 ## Restore
 

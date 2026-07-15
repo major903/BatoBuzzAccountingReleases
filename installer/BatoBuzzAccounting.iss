@@ -1,6 +1,6 @@
 ; BatoBuzz Accounting - Inno Setup Installer Script
 #define MyAppName "BatoBuzz Accounting"
-#define MyAppVersion "1.0.7"
+#define MyAppVersion "1.0.8"
 #define MyAppPublisher "BatoBuzz Technologies Pvt Ltd"
 #define MyAppURL "https://batobuzz.com"
 #define MyAppExeName "BatoBuzz.Desktop.exe"
@@ -33,7 +33,7 @@ UninstallDisplayName={#MyAppName}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

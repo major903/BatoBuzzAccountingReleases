@@ -1,44 +1,104 @@
 <UserControl x:Class="BatoBuzz.Desktop.Views.LoginView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="860">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="360"/>
-            <ColumnDefinition Width="500"/>
-        </Grid.ColumnDefinitions>
+    <Grid Margin="28" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="980">
+        <Border Style="{DynamicResource SectionPanel}" Padding="0" CornerRadius="16" MinHeight="480">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="410"/>
+                    <ColumnDefinition Width="500"/>
+                </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="{DynamicResource ShellHeaderBrush}" CornerRadius="8,0,0,8" Padding="34">
-            <StackPanel VerticalAlignment="Center">
-                <Border Width="48" Height="48" CornerRadius="8" Background="{DynamicResource PrimaryBrush}" HorizontalAlignment="Left" Margin="0,0,0,22">
-                    <TextBlock Text="B" Foreground="{DynamicResource WhiteBrush}" FontSize="27" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <!-- Product story -->
+                <Border Grid.Column="0" Background="{DynamicResource ShellHeaderBrush}" CornerRadius="15,0,0,15" Padding="40">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="46" Height="46" CornerRadius="12" Background="{DynamicResource PrimaryBrush}" Margin="0,0,13,0">
+                                    <TextBlock Text="B" Foreground="{DynamicResource WhiteBrush}" FontSize="25" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="BatoBuzz" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource WhiteBrush}"/>
+                                    <TextBlock Text="ACCOUNTING" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource ShellHeaderMutedBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                            <TextBlock Text="Clear books.&#x0a;Confident decisions."
+                                       FontSize="29"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource WhiteBrush}"
+                                       LineHeight="38"
+                                       Margin="0,0,0,14"/>
+                            <TextBlock Text="Run sales, purchases, inventory, ledgers and reports from one secure workspace."
+                                       Foreground="{DynamicResource ShellHeaderMutedBrush}"
+                                       TextWrapping="Wrap"
+                                       LineHeight="21"
+                                       Margin="0,0,0,26"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,11">
+                                <Border Width="22" Height="22" CornerRadius="11" Background="#23463F" Margin="0,0,10,0"><TextBlock Text="✓" Foreground="#69D8C4" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                <TextBlock Text="Offline-first and always available" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,11">
+                                <Border Width="22" Height="22" CornerRadius="11" Background="#23463F" Margin="0,0,10,0"><TextBlock Text="✓" Foreground="#69D8C4" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                <TextBlock Text="Built for Nepal accounting workflows" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="22" Height="22" CornerRadius="11" Background="#23463F" Margin="0,0,10,0"><TextBlock Text="✓" Foreground="#69D8C4" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                                <TextBlock Text="Backup and restore included" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="2" Text="Your business data stays under your control." Foreground="{DynamicResource ShellHeaderMutedBrush}" FontSize="11"/>
+                    </Grid>
                 </Border>
-                <TextBlock Text="BatoBuzz Accounting" FontSize="25" FontWeight="SemiBold" Foreground="{DynamicResource WhiteBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                <TextBlock Text="Offline-first business accounts with sales, purchase, inventory, journals, reports, backup and restore." Foreground="{DynamicResource ShellHeaderMutedBrush}" TextWrapping="Wrap" LineHeight="21"/>
-            </StackPanel>
-        </Border>
 
-        <Border Grid.Column="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,1,1" CornerRadius="0,8,8,0" Padding="42">
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Sign in" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4"/>
-                <TextBlock Text="Use your local BatoBuzz account" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,28"/>
+                <!-- Sign-in form -->
+                <Border Grid.Column="1" Background="{DynamicResource CardBrush}" CornerRadius="0,15,15,0" Padding="48,36">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Welcome back" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Sign in to continue to your accounting workspace" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,25"/>
 
-                <TextBlock Text="Username" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding UserName}" Margin="0,0,0,16"/>
+                        <TextBlock Text="USERNAME" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" FontWeight="SemiBold" Margin="1,0,0,6"/>
+                        <TextBox Text="{Binding UserName}" Margin="0,0,0,16" ToolTip="Enter your BatoBuzz username"/>
 
-                <TextBlock Text="Password" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                <PasswordBox x:Name="PasswordBox" PasswordChanged="PasswordBox_OnPasswordChanged" Margin="0,0,0,8"/>
+                        <TextBlock Text="PASSWORD" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" FontWeight="SemiBold" Margin="1,0,0,6"/>
+                        <PasswordBox x:Name="PasswordBox" PasswordChanged="PasswordBox_OnPasswordChanged" Margin="0,0,0,11" ToolTip="Enter your password"/>
 
-                <CheckBox Content="Remember me on this computer"
-                          IsChecked="{Binding RememberMe}"
-                          Margin="0,0,0,12"/>
+                        <CheckBox Content="Remember me on this computer"
+                                  IsChecked="{Binding RememberMe}"
+                                  Margin="1,0,0,15"/>
 
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Margin="0,0,0,16" FontSize="12"/>
+                        <Border Background="#FFF4F4" BorderBrush="#F2B8B8" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,14">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ErrorMessage}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" FontSize="12"/>
+                        </Border>
 
-                <Button Content="{Binding LoginButtonText}" Command="{Binding LoginCommand}" Style="{DynamicResource PrimaryButton}" Margin="0,0,0,8"/>
-                <Button Content="Local Login" Command="{Binding LoginOfflineCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,0,16"/>
+                        <Button Content="{Binding LoginButtonText}" Command="{Binding LoginCommand}" Style="{DynamicResource PrimaryButton}" Height="42" Margin="0,0,0,9"/>
+                        <Button Content="Continue with local login" Command="{Binding LoginOfflineCommand}" Style="{DynamicResource SecondaryButton}" Height="42" Margin="0,0,0,18"/>
 
-                <TextBlock Text="Forgot password?" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Cursor="Hand"/>
-            </StackPanel>
+                        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
+                            <TextBlock Text="Having trouble signing in? Contact your administrator." Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

@@ -3,30 +3,30 @@
     <!-- Soft light accounting theme.
          Resource keys are intentionally unchanged so no view, binding,
          command, route, or application logic needs to be modified. -->
-    <Color x:Key="BackgroundColor">#EAF0F6</Color>
-    <Color x:Key="SurfaceColor">#F6F8FB</Color>
-    <Color x:Key="CardColor">#FDFEFF</Color>
-    <Color x:Key="InputColor">#FFFFFF</Color>
+    <Color x:Key="BackgroundColor">#F3F6FA</Color>
+    <Color x:Key="SurfaceColor">#FFFFFF</Color>
+    <Color x:Key="CardColor">#FFFFFF</Color>
+    <Color x:Key="InputColor">#FBFCFE</Color>
 
     <Color x:Key="PrimaryColor">#0F766E</Color>
-    <Color x:Key="PrimaryDarkColor">#0F4E49</Color>
-    <Color x:Key="PrimaryLightColor">#0B6B63</Color>
-    <Color x:Key="PrimarySoftColor">#DDF7F4</Color>
-    <Color x:Key="HoverColor">#EAF7F4</Color>
-    <Color x:Key="SelectionColor">#CFF3EE</Color>
+    <Color x:Key="PrimaryDarkColor">#0B5B55</Color>
+    <Color x:Key="PrimaryLightColor">#149388</Color>
+    <Color x:Key="PrimarySoftColor">#E4F5F2</Color>
+    <Color x:Key="HoverColor">#EFF8F6</Color>
+    <Color x:Key="SelectionColor">#D7F0EC</Color>
 
     <Color x:Key="AccentColor">#2563EB</Color>
-    <Color x:Key="ShellHeaderColor">#14213D</Color>
-    <Color x:Key="ShellHeaderMutedColor">#D9E2F2</Color>
+    <Color x:Key="ShellHeaderColor">#0F172A</Color>
+    <Color x:Key="ShellHeaderMutedColor">#CBD5E1</Color>
     <Color x:Key="TextPrimaryColor">#172033</Color>
-    <Color x:Key="TextSecondaryColor">#596579</Color>
-    <Color x:Key="TextMutedColor">#7B879A</Color>
-    <Color x:Key="BorderColor">#9CA3AF</Color>
+    <Color x:Key="TextSecondaryColor">#64748B</Color>
+    <Color x:Key="TextMutedColor">#94A3B8</Color>
+    <Color x:Key="BorderColor">#D7E0EA</Color>
 
     <Color x:Key="SuccessColor">#15803D</Color>
-    <Color x:Key="WarningColor">#B45309</Color>
-    <Color x:Key="ErrorColor">#C24141</Color>
-    <Color x:Key="DisabledColor">#A7B0BF</Color>
+    <Color x:Key="WarningColor">#C2670A</Color>
+    <Color x:Key="ErrorColor">#D14343</Color>
+    <Color x:Key="DisabledColor">#A8B3C2</Color>
 
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>

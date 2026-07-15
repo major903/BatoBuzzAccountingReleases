@@ -10,6 +10,7 @@ using System.IO;
 using System.Windows;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Threading;
 
 namespace BatoBuzz.Desktop.ViewModels;
 
@@ -19,8 +20,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly DesktopSession _session;
     private readonly RememberedLoginService _rememberedLogin;
     private readonly GitHubReleaseUpdateService _updateService;
+    private readonly AutomaticBackupService _automaticBackupService;
+    private readonly DispatcherTimer _automaticBackupTimer;
     private IServiceScope? _loginScope;
     private bool _disposed;
+    private bool _isAutomaticBackupRunning;
     private static readonly string DataDirectory = DesktopStoragePaths.DataDirectory;
     private static readonly string DatabasePath = DesktopStoragePaths.DatabasePath;
     private static readonly string PendingRestorePath = DesktopStoragePaths.PendingRestorePath;
@@ -46,6 +50,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _currentDate = FormatCurrentDate();
 
+    [ObservableProperty]
+    private string _automaticBackupStatus = "Automatic backup will run after sign-in.";
+
+    [ObservableProperty]
+    private bool _hasAutomaticBackupWarning;
+
     private static string FormatCurrentDate()
     {
         var today = DateTime.Now;
@@ -62,12 +72,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IServiceScopeFactory scopeFactory,
         DesktopSession session,
         RememberedLoginService rememberedLogin,
-        GitHubReleaseUpdateService updateService)
+        GitHubReleaseUpdateService updateService,
+        AutomaticBackupService automaticBackupService)
     {
         _scopeFactory = scopeFactory;
         _session = session;
         _rememberedLogin = rememberedLogin;
         _updateService = updateService;
+        _automaticBackupService = automaticBackupService;
+        _automaticBackupTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
+        _automaticBackupTimer.Tick += AutomaticBackupTimer_OnTick;
     }
 
     public void Initialize()
@@ -77,6 +91,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         if (CurrentView == null && !IsAuthenticated)
             ShowLogin();
+
+        _automaticBackupTimer.Start();
     }
 
     [RelayCommand]
@@ -90,6 +106,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SetUser("");
         CompanyName = "No Company Selected";
         WindowTitle = "BatoBuzz Accounting";
+        AutomaticBackupStatus = "Automatic backup will run after sign-in.";
+        HasAutomaticBackupWarning = false;
 
         var scope = _scopeFactory.CreateScope();
         try
@@ -517,6 +535,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _session.CompanyName = companyName ?? "";
         IsAuthenticated = true;
         SetUser(userName);
+        _ = RunAutomaticBackupAsync(showWarning: true);
 
         if (companyId.HasValue && companyId.Value != Guid.Empty)
         {
@@ -547,6 +566,40 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (Directory.Exists(folder))
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+    }
+
+    private async void AutomaticBackupTimer_OnTick(object? sender, EventArgs e) =>
+        await RunAutomaticBackupAsync(showWarning: true);
+
+    private async Task RunAutomaticBackupAsync(bool showWarning)
+    {
+        if (!IsAuthenticated || _isAutomaticBackupRunning)
+            return;
+
+        _isAutomaticBackupRunning = true;
+        try
+        {
+            var result = await Task.Run(_automaticBackupService.EnsureDailyBackup);
+            AutomaticBackupStatus = result.Message;
+            HasAutomaticBackupWarning = false;
+        }
+        catch (Exception ex)
+        {
+            AutomaticBackupStatus = "Automatic backup needs attention.";
+            HasAutomaticBackupWarning = true;
+            if (showWarning)
+            {
+                MessageBox.Show(
+                    $"BatoBuzz could not create today's automatic backup. Your existing data is unchanged, but create a manual backup after resolving the issue.{Environment.NewLine}{Environment.NewLine}{ex.Message}",
+                    "BatoBuzz Automatic Backup",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        finally
+        {
+            _isAutomaticBackupRunning = false;
+        }
     }
 
     public string ApplicationVersion => $"v{GetCurrentVersion()}";
@@ -582,6 +635,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _disposed = true;
         CurrentView = null;
+        _automaticBackupTimer.Stop();
+        _automaticBackupTimer.Tick -= AutomaticBackupTimer_OnTick;
         DisposeLoginScope();
         DisposeTabs();
         GC.SuppressFinalize(this);

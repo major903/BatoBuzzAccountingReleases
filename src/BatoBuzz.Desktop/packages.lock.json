@@ -662,8 +662,8 @@
       "batobuzz.application": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Contracts": "[1.0.4, )",
-          "BatoBuzz.Domain": "[1.0.4, )"
+          "BatoBuzz.Contracts": "[1.0.8, )",
+          "BatoBuzz.Domain": "[1.0.8, )"
         }
       },
       "batobuzz.contracts": {
@@ -675,27 +675,14 @@
       "batobuzz.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "BatoBuzz.Application": "[1.0.4, )",
-          "BatoBuzz.Contracts": "[1.0.4, )",
-          "BatoBuzz.Domain": "[1.0.4, )",
+          "BatoBuzz.Application": "[1.0.8, )",
+          "BatoBuzz.Contracts": "[1.0.8, )",
+          "BatoBuzz.Domain": "[1.0.8, )",
           "Microsoft.EntityFrameworkCore": "[10.0.9, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.9, )",
           "Microsoft.EntityFrameworkCore.Tools": "[10.0.9, )",
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.3, )"
         }
-      }
-    },
-    "net10.0-windows7.0/win-x64": {
-      "Microsoft.Web.WebView2": {
-        "type": "Direct",
-        "requested": "[1.0.3179.45, )",
-        "resolved": "1.0.3179.45",
-        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
-      },
-      "SourceGear.sqlite3": {
-        "type": "Transitive",
-        "resolved": "3.50.4.5",
-        "contentHash": "UtnipXhJYZKQOQIfpws/msLK7IRhMplE1CZCaZLIQXRnGD474QVpO/J9nMlQQY8NZueGz1aidjoxDRnrC1NT3Q=="
       }
     }
   }

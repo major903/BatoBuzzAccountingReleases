@@ -48,24 +48,34 @@ public class AccountingService : IAccountingService
                 throw new InvalidOperationException("Journal tax rate must be between 0 and 100.");
         }
 
-        var entryNumber = await _unitOfWork.JournalEntries.GetNextEntryNumberAsync(request.CompanyId, request.VoucherType);
-        var entry = JournalEntry.Create(
-            request.CompanyId, request.EntryDate, (VoucherType)request.VoucherType,
-            entryNumber, userId, request.ReferenceNumber, request.Narration, request.BranchId);
-
-        foreach (var line in request.Lines)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            entry.AddLine(line.LedgerId, line.DebitAmount, line.CreditAmount,
-                line.Narration, line.CostCentre, line.TaxRate, line.TaxCode);
+            var entryNumber = await _unitOfWork.JournalEntries.GetNextEntryNumberAsync(request.CompanyId, request.VoucherType);
+            var entry = JournalEntry.Create(
+                request.CompanyId, request.EntryDate, (VoucherType)request.VoucherType,
+                entryNumber, userId, request.ReferenceNumber, request.Narration, request.BranchId);
+
+            foreach (var line in request.Lines)
+            {
+                entry.AddLine(line.LedgerId, line.DebitAmount, line.CreditAmount,
+                    line.Narration, line.CostCentre, line.TaxRate, line.TaxCode);
+            }
+
+            await _unitOfWork.JournalEntries.AddAsync(entry);
+            await _unitOfWork.SaveChangesAsync();
+
+            var savedEntry = await _unitOfWork.JournalEntries.GetByIdWithLinesAsync(entry.Id)
+                ?? throw new InvalidOperationException("Journal entry could not be loaded after creation.");
+
+            await _unitOfWork.CommitTransactionAsync();
+            return MapJournalToDto(savedEntry);
         }
-
-        await _unitOfWork.JournalEntries.AddAsync(entry);
-        await _unitOfWork.SaveChangesAsync();
-
-        var savedEntry = await _unitOfWork.JournalEntries.GetByIdWithLinesAsync(entry.Id)
-            ?? throw new InvalidOperationException("Journal entry could not be loaded after creation.");
-
-        return MapJournalToDto(savedEntry);
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     public async Task<JournalEntryDto> PostJournalAsync(Guid journalId, Guid userId)
@@ -266,13 +276,8 @@ public class AccountingService : IAccountingService
     {
         if (asOfDate == default)
             throw new InvalidOperationException("As-of date is required.");
-        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+        _ = await _unitOfWork.Companies.GetByIdAsync(companyId)
             ?? throw new InvalidOperationException("Company not found.");
-        var existingYearIds = company.FinancialYears.Select(year => year.Id).ToHashSet();
-        var financialYear = company.EnsureFinancialYear(asOfDate);
-        if (!existingYearIds.Contains(financialYear.Id))
-            await _unitOfWork.Companies.AddFinancialYearAsync(financialYear);
-        await _unitOfWork.SaveChangesAsync();
 
         var ledgers = await _unitOfWork.Ledgers.GetByCompanyAsync(companyId);
         var assets = new List<BSAccountDto>();

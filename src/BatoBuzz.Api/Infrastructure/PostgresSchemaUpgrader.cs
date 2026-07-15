@@ -69,6 +69,18 @@ public static class PostgresSchemaUpgrader
                     ORDER BY x."CreatedAt" LIMIT 1)
                 WHERE d."PostedJournalEntryId" IS NULL
                 """
+            ]),
+        new(
+            "20260715_004_document_sequences",
+            [
+                """
+                CREATE TABLE IF NOT EXISTS "DocumentSequences" (
+                    "CompanyId" uuid NOT NULL,
+                    "SequenceKey" character varying(32) NOT NULL,
+                    "LastValue" bigint NOT NULL,
+                    CONSTRAINT "PK_DocumentSequences" PRIMARY KEY ("CompanyId", "SequenceKey")
+                )
+                """
             ])
     ];
 

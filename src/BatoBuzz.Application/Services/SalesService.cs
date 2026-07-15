@@ -21,7 +21,6 @@ public class SalesService : ISalesService
 
     public async Task<SalesInvoiceDto> CreateInvoiceAsync(CreateSalesInvoiceRequest request, Guid userId)
     {
-        var invoiceNumber = await _unitOfWork.SalesInvoices.GetNextInvoiceNumberAsync(request.CompanyId);
         await ValidateCompanyBranchAsync(request.CompanyId, request.BranchId);
         _ = await GetCustomerForCompanyAsync(request.CompanyId, request.CustomerId);
         if (request.Lines.Count == 0)
@@ -30,22 +29,32 @@ public class SalesService : ISalesService
             request.CompanyId,
             request.Lines.Select(l => (l.ItemId, l.WarehouseId, l.Description)));
 
-        var invoice = SalesInvoice.Create(
-            request.CompanyId, request.CustomerId, invoiceNumber,
-            request.InvoiceDate, request.DueDate, userId,
-            request.Reference, request.Narration, request.IsVatApplicable,
-            request.VatRate, request.BranchId);
-
-        foreach (var line in request.Lines)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            invoice.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
-                line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+            var invoiceNumber = await _unitOfWork.SalesInvoices.GetNextInvoiceNumberAsync(request.CompanyId);
+            var invoice = SalesInvoice.Create(
+                request.CompanyId, request.CustomerId, invoiceNumber,
+                request.InvoiceDate, request.DueDate, userId,
+                request.Reference, request.Narration, request.IsVatApplicable,
+                request.VatRate, request.BranchId);
+
+            foreach (var line in request.Lines)
+            {
+                invoice.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                    line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+            }
+
+            await _unitOfWork.SalesInvoices.AddAsync(invoice);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return MapInvoiceToDto(invoice);
         }
-
-        await _unitOfWork.SalesInvoices.AddAsync(invoice);
-        await _unitOfWork.SaveChangesAsync();
-
-        return MapInvoiceToDto(invoice);
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     public async Task<SalesInvoiceDto> PostInvoiceAsync(Guid invoiceId, Guid userId)
@@ -489,6 +498,9 @@ public class SalesService : ISalesService
             if (companyWarehouses.All(w => w.Id != warehouseId))
                 throw new InvalidOperationException("Invoice warehouse does not belong to the invoice company.");
 
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                item.Id, warehouseId, invoice.InvoiceDate, "post this sales invoice");
+
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(item.Id, warehouseId);
             if (balance == null)
             {
@@ -531,6 +543,8 @@ public class SalesService : ISalesService
             invoice.CompanyId, invoice.Id, "SalesInvoice");
         foreach (var movement in movements.Where(m => m.MovementType == MovementType.SaleOut))
         {
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                movement.ItemId, movement.WarehouseId, correctionDate, "cancel this sales invoice");
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(
                 movement.ItemId, movement.WarehouseId)
                 ?? throw new InvalidOperationException("The stock balance needed to cancel this invoice was not found.");

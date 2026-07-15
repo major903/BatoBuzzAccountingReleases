@@ -5,49 +5,15 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Row="0" Grid.Column="0">
-                    <TextBlock Text="Item Name" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                    <TextBox Text="{Binding ItemName}"/>
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="2">
-                    <TextBlock Text="Code" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                    <TextBox Text="{Binding ItemCode}"/>
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="4">
-                    <TextBlock Text="Cost" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                    <TextBox Text="{Binding StandardCost}"/>
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="6">
-                    <TextBlock Text="Sale Price" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                    <TextBox Text="{Binding SalePrice}"/>
-                </StackPanel>
-                <Button Grid.Row="0" Grid.Column="8" Content="Save Item" Command="{Binding SaveItemCommand}" Style="{DynamicResource PrimaryButton}" VerticalAlignment="Bottom"/>
-
-                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,0,0">
-                    <TextBlock Text="Reorder Level (optional)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
-                    <TextBox Text="{Binding ReorderLevel}"/>
-                </StackPanel>
-            </Grid>
+        <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Padding="22,18" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Inventory" Style="{DynamicResource ViewTitle}"/>
+                <TextBlock Text="Create items, record opening stock or write-offs, and review current stock value." Style="{DynamicResource ViewSubtitle}" Margin="0,4,0,0"/>
+            </StackPanel>
         </Border>
 
         <Border Grid.Row="1" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
@@ -66,46 +32,92 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                    <TextBlock Text="Item Name" Style="{DynamicResource FieldLabel}"/>
+                    <TextBox Text="{Binding ItemName}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2">
+                    <TextBlock Text="Code" Style="{DynamicResource FieldLabel}"/>
+                    <TextBox Text="{Binding ItemCode}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="4">
+                    <TextBlock Text="Standard Cost" Style="{DynamicResource FieldLabel}"/>
+                    <TextBox Text="{Binding StandardCost}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="6">
+                    <TextBlock Text="Sale Price" Style="{DynamicResource FieldLabel}"/>
+                    <TextBox Text="{Binding SalePrice}"/>
+                </StackPanel>
+                <Button Grid.Row="0" Grid.Column="8" Content="Save Item" Command="{Binding SaveItemCommand}" Style="{DynamicResource PrimaryButton}" VerticalAlignment="Bottom"/>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,0,0">
+                    <TextBlock Text="Reorder Level (optional)" Style="{DynamicResource FieldLabel}"/>
+                    <TextBox Text="{Binding ReorderLevel}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Movement Item" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Item" Style="{DynamicResource FieldLabel}"/>
                     <ComboBox Text="{Binding MovementItemName}" ItemsSource="{Binding AvailableItems}" IsEditable="True"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Type" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Stock Activity" Style="{DynamicResource FieldLabel}"/>
                     <ComboBox ItemsSource="{Binding MovementTypes}" SelectedItem="{Binding MovementType}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="4">
-                    <TextBlock Text="Quantity" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Quantity" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Text="{Binding Quantity}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="6">
-                    <TextBlock Text="Unit Cost" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Unit Cost" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Text="{Binding UnitCost}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="8">
-                    <TextBlock Text="Date" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Activity Date" Style="{DynamicResource FieldLabel}"/>
                     <DatePicker SelectedDate="{Binding MovementDate}" Width="130"/>
                 </StackPanel>
                 <Button Grid.Column="10" Content="Post Movement" Command="{Binding RecordMovementCommand}" Style="{DynamicResource PrimaryButton}" VerticalAlignment="Bottom"/>
 
                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="11" Margin="0,8,0,0">
-                    <TextBlock Text="Narration / reason" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBlock Text="Reason / Note" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Text="{Binding Narration}"/>
                 </StackPanel>
+                <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="11" Style="{DynamicResource WorkflowHint}" Margin="0,10,0,0">
+                    <TextBlock Text="For sales, purchases, and returns, use the dedicated invoice or purchase-bill screens so stock, revenue, and supplier balances stay in sync." Style="{DynamicResource ViewSubtitle}" Foreground="{DynamicResource PrimaryDarkBrush}"/>
+                </Border>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBox Text="{Binding SearchText}" Width="200" Margin="0,0,8,0"/>
+                <TextBox Text="{Binding SearchText}" Width="260" Margin="0,0,8,0" ToolTip="Search by item name"/>
                 <Button Content="Search" Command="{Binding SearchCommand}" Style="{DynamicResource SecondaryButton}"/>
             </StackPanel>
             <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>

@@ -66,8 +66,12 @@ public class InventoryService : IInventoryService
         if (!Enum.IsDefined(typeof(MovementType), request.MovementType))
             throw new InvalidOperationException("Stock movement type is invalid.");
         var movementType = (MovementType)request.MovementType;
-        if (movementType is MovementType.StockTransferIn or MovementType.StockTransferOut)
-            throw new InvalidOperationException("Standalone stock transfers are not supported; use an atomic warehouse transfer.");
+        if (movementType is not (MovementType.OpeningStock or MovementType.Damage or MovementType.WriteOff))
+        {
+            throw new InvalidOperationException(
+                "Standalone stock movements support only opening stock, damage, and write-off. " +
+                "Use sales invoices, purchase bills, their correction workflows, or stock adjustment as appropriate.");
+        }
         var movementDate = request.MovementDate.Date;
 
         var item = await _unitOfWork.Items.GetByIdWithDetailsAsync(request.ItemId)
@@ -85,6 +89,8 @@ public class InventoryService : IInventoryService
         try
         {
             await _posting.EnsurePeriodOpenAsync(request.CompanyId, movementDate);
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                request.ItemId, request.WarehouseId, movementDate, "post a stock movement");
 
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(request.ItemId, request.WarehouseId);
 
@@ -173,6 +179,8 @@ public class InventoryService : IInventoryService
         try
         {
             await _posting.EnsurePeriodOpenAsync(request.CompanyId, adjustmentDate);
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                request.ItemId, request.WarehouseId, adjustmentDate, "adjust stock");
 
             var previousValue = balance.TotalValue;
             var difference = request.AdjustedQuantity - balance.Quantity;
