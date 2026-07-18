@@ -11,7 +11,7 @@
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <Company>BatoBuzz Technologies Pvt Ltd</Company>
     <Product>BatoBuzz Accounting</Product>
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
     <Copyright>Copyright (c) 2026 BatoBuzz Technologies Pvt Ltd</Copyright>
   </PropertyGroup>
 

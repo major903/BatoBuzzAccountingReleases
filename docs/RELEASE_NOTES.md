@@ -1,5 +1,12 @@
 # Release Notes - BatoBuzz Accounting
 
+## v1.0.9
+
+- Completed sales and purchase return workflows, including safeguarded partial returns.
+- Added editable chart-of-accounts and inventory master-data controls.
+- Added explicit outstanding-invoice allocation for receipts and payments.
+- Expanded end-to-end accounting smoke coverage and refreshed tester guidance.
+
 ## v1.0.8
 
 - Improved accounting posting, correction, and inventory safeguards.
