@@ -86,6 +86,7 @@ public partial class App : System.Windows.Application
                     services.AddTransient<PaymentViewModel>();
                     services.AddTransient<InventoryViewModel>();
                     services.AddTransient<JournalEntryViewModel>();
+                    services.AddTransient<ChartOfAccountsViewModel>();
                     services.AddTransient<ReportsViewModel>();
                     services.AddTransient<TaxSettingsViewModel>();
                     services.AddTransient<PeriodLockSettingsViewModel>();

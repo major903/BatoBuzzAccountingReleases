@@ -41,11 +41,60 @@ public class SalesService : ISalesService
 
             foreach (var line in request.Lines)
             {
-                invoice.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                var draftLine = invoice.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
                     line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+                await _unitOfWork.SalesInvoices.AddLineAsync(draftLine);
             }
 
             await _unitOfWork.SalesInvoices.AddAsync(invoice);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return MapInvoiceToDto(invoice);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
+    public async Task<SalesInvoiceDto> UpdateDraftInvoiceAsync(Guid invoiceId, CreateSalesInvoiceRequest request, Guid userId)
+    {
+        var invoice = await _unitOfWork.SalesInvoices.GetByIdWithDetailsAsync(invoiceId)
+            ?? throw new InvalidOperationException("Invoice not found.");
+        if (invoice.Status != InvoiceStatus.Draft || invoice.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("Only an unposted draft invoice can be edited.");
+
+        await ValidateCompanyBranchAsync(invoice.CompanyId, request.BranchId);
+        if (request.CompanyId != invoice.CompanyId)
+            throw new InvalidOperationException("A draft invoice cannot be moved to another company.");
+        _ = await GetCustomerForCompanyAsync(request.CompanyId, request.CustomerId);
+        if (request.Lines.Count == 0)
+            throw new InvalidOperationException("A sales invoice requires at least one line.");
+        await ValidateSalesLineReferencesAsync(
+            request.CompanyId,
+            request.Lines.Select(l => (l.ItemId, l.WarehouseId, l.Description)));
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            invoice.UpdateDraft(
+                request.CustomerId,
+                request.InvoiceDate,
+                request.DueDate,
+                request.Reference,
+                request.Narration,
+                request.IsVatApplicable,
+                request.VatRate,
+                request.BranchId,
+                userId);
+            foreach (var line in request.Lines)
+            {
+                var draftLine = invoice.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                    line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+                await _unitOfWork.SalesInvoices.AddLineAsync(draftLine);
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
             return MapInvoiceToDto(invoice);
@@ -256,6 +305,103 @@ public class SalesService : ISalesService
         }
     }
 
+    public async Task<OperationalNoteDto> IssueCreditNoteAsync(
+        Guid invoiceId, CorrectPostedDocumentRequest request, Guid userId)
+    {
+        ValidateCorrection(request);
+        var invoice = await _unitOfWork.SalesInvoices.GetByIdWithDetailsAsync(invoiceId)
+            ?? throw new InvalidOperationException("Invoice not found.");
+        if (request.CorrectionDate.Date < invoice.InvoiceDate.Date)
+            throw new InvalidOperationException("Credit-note date cannot be before the invoice date.");
+        if (!invoice.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("The invoice has not been posted and cannot receive a credit note.");
+        if (request.ReturnPercent <= 0 || request.ReturnPercent > 100)
+            throw new InvalidOperationException("Return percent must be greater than zero and no more than 100.");
+        var customer = await GetCustomerForCompanyAsync(invoice.CompanyId, invoice.CustomerId);
+        var returnFactor = request.ReturnPercent / 100m;
+        var taxableAmount = Money.Round(invoice.TaxableAmount * returnFactor);
+        var vatAmount = Money.Round(invoice.VatAmount * returnFactor);
+        var returnAmount = Money.Round(taxableAmount + vatAmount);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _posting.EnsurePeriodOpenAsync(invoice.CompanyId, request.CorrectionDate);
+            invoice.IssueCreditNote(returnAmount, userId);
+            customer.UpdateBalance(-returnAmount);
+            var stockCostReturned = await RestoreInvoiceStockAsync(
+                invoice, request.CorrectionDate, request.Reason, "CreditNote", returnFactor);
+            var salesLedger = await _posting.GetOrCreateSalesLedgerAsync(invoice.CompanyId);
+            var lines = new List<PostingLine>
+            {
+                new(salesLedger.Id, taxableAmount, 0, $"Credit note for {invoice.InvoiceNumber}"),
+                new(customer.LedgerId, 0, returnAmount, $"Credit note for {invoice.InvoiceNumber}")
+            };
+            if (vatAmount > 0)
+            {
+                var vatLedger = await _posting.GetOrCreateSalesVatLedgerAsync(invoice.CompanyId);
+                lines.Add(new PostingLine(vatLedger.Id, vatAmount, 0,
+                    $"VAT reversal for credit note {invoice.InvoiceNumber}", invoice.VatRate, "OUTPUT-VAT"));
+            }
+            if (stockCostReturned > 0)
+            {
+                var inventoryLedger = await _posting.GetOrCreateInventoryLedgerAsync(invoice.CompanyId);
+                var costOfSalesLedger = await _posting.GetOrCreateCostOfSalesLedgerAsync(invoice.CompanyId);
+                lines.Add(new PostingLine(inventoryLedger.Id, stockCostReturned, 0, $"Inventory returned from {invoice.InvoiceNumber}"));
+                lines.Add(new PostingLine(costOfSalesLedger.Id, 0, stockCostReturned, $"Cost reversal for {invoice.InvoiceNumber}"));
+            }
+
+            var noteNumber = await _unitOfWork.SalesInvoices.GetNextCreditNoteNumberAsync(invoice.CompanyId);
+            var journal = await _posting.CreateAndPostJournalAsync(
+                invoice.CompanyId, request.CorrectionDate, VoucherType.CreditNote, userId, noteNumber,
+                $"Credit note {noteNumber} for {invoice.InvoiceNumber}: {request.Reason.Trim()}", invoice.BranchId, lines);
+            var auditUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            await _unitOfWork.AuditLogs.AddAsync(AuditLog.Create(
+                "SalesInvoice.CreditNoteIssued", nameof(SalesInvoice), invoice.Id, invoice.CompanyId,
+                userId, userName: auditUser?.UserName ?? userId.ToString(), newValues: noteNumber));
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return new OperationalNoteDto
+            {
+                JournalEntryId = journal.Id,
+                NoteNumber = noteNumber,
+                NoteDate = request.CorrectionDate.Date,
+                Amount = returnAmount,
+                SourceDocumentNumber = invoice.InvoiceNumber
+            };
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
+    public async Task DeleteDraftInvoiceAsync(Guid invoiceId, Guid userId)
+    {
+        var invoice = await _unitOfWork.SalesInvoices.GetByIdWithDetailsAsync(invoiceId)
+            ?? throw new InvalidOperationException("Invoice not found.");
+        if (invoice.Status != InvoiceStatus.Draft || invoice.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("Only an unposted draft invoice can be discarded.");
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var auditUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            await _unitOfWork.SalesInvoices.DeleteAsync(invoice);
+            await _unitOfWork.AuditLogs.AddAsync(AuditLog.Create(
+                "SalesInvoice.DraftDiscarded", nameof(SalesInvoice), invoice.Id, invoice.CompanyId,
+                userId, userName: auditUser?.UserName ?? userId.ToString(), newValues: invoice.InvoiceNumber));
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
     public async Task<ReceiptDto> ReverseReceiptAsync(
         Guid receiptId, CorrectPostedDocumentRequest request, Guid userId)
     {
@@ -374,8 +520,13 @@ public class SalesService : ISalesService
         Id = inv.Id,
         InvoiceNumber = inv.InvoiceNumber,
         InvoiceDate = inv.InvoiceDate,
+        DueDate = inv.DueDate,
         CustomerId = inv.CustomerId,
         CustomerName = inv.Customer?.Name ?? string.Empty,
+        Reference = inv.Reference,
+        Narration = inv.Narration,
+        IsVatApplicable = inv.IsVatApplicable,
+        VatRate = inv.VatRate,
         SubTotal = inv.SubTotal,
         DiscountAmount = inv.DiscountAmount,
         VatAmount = inv.VatAmount,
@@ -388,9 +539,10 @@ public class SalesService : ISalesService
         CorrectionReason = inv.PostedJournalEntry?.ReversalReason,
         Lines = inv.Lines.Select(l => new SalesInvoiceLineDto
         {
-            Id = l.Id, Description = l.Description, Quantity = l.Quantity,
-            Rate = l.Rate, DiscountAmount = l.DiscountAmount,
-            TaxAmount = l.TaxAmount, LineTotal = l.LineTotal
+            Id = l.Id, ItemId = l.ItemId, WarehouseId = l.WarehouseId,
+            Description = l.Description, Quantity = l.Quantity, Rate = l.Rate,
+            DiscountPercent = l.DiscountPercent, TaxPercent = l.TaxPercent,
+            DiscountAmount = l.DiscountAmount, TaxAmount = l.TaxAmount, LineTotal = l.LineTotal
         }).ToList()
     };
 
@@ -536,9 +688,10 @@ public class SalesService : ISalesService
         return totalCostRemoved;
     }
 
-    private async Task RestoreInvoiceStockAsync(
-        SalesInvoice invoice, DateTime correctionDate, string reason)
+    private async Task<decimal> RestoreInvoiceStockAsync(
+        SalesInvoice invoice, DateTime correctionDate, string reason, string sourceDocumentType = "SalesInvoiceCancellation", decimal returnFactor = 1m)
     {
+        decimal totalCostReturned = 0;
         var movements = await _unitOfWork.StockMovements.GetBySourceDocumentAsync(
             invoice.CompanyId, invoice.Id, "SalesInvoice");
         foreach (var movement in movements.Where(m => m.MovementType == MovementType.SaleOut))
@@ -548,23 +701,29 @@ public class SalesService : ISalesService
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(
                 movement.ItemId, movement.WarehouseId)
                 ?? throw new InvalidOperationException("The stock balance needed to cancel this invoice was not found.");
-            balance.AddStockAtValue(movement.Quantity, movement.TotalCost);
+            var quantity = Money.Round(movement.Quantity * returnFactor);
+            var totalCost = Money.Round(movement.TotalCost * returnFactor);
+            if (quantity <= 0)
+                continue;
+            balance.AddStockAtValue(quantity, totalCost);
             var returnMovement = StockMovement.Create(
                 invoice.CompanyId,
                 movement.ItemId,
                 movement.WarehouseId,
                 MovementType.SalesReturn,
-                movement.Quantity,
-                movement.Quantity == 0 ? 0 : movement.TotalCost / movement.Quantity,
+                quantity,
+                quantity == 0 ? 0 : totalCost / quantity,
                 balance.Quantity,
                 balance.TotalValue,
                 correctionDate,
                 invoice.Id,
-                "SalesInvoiceCancellation",
-                narration: $"Cancellation of {invoice.InvoiceNumber}: {reason.Trim()}",
-                totalCostOverride: movement.TotalCost);
+                sourceDocumentType,
+                narration: $"{(sourceDocumentType == "CreditNote" ? "Credit note" : "Cancellation")} of {invoice.InvoiceNumber}: {reason.Trim()}",
+                totalCostOverride: totalCost);
             await _unitOfWork.StockMovements.AddAsync(returnMovement);
+            totalCostReturned = Money.Round(totalCostReturned + totalCost);
         }
+        return totalCostReturned;
     }
 
     private async Task<Guid> GetDefaultWarehouseIdAsync(Guid companyId)

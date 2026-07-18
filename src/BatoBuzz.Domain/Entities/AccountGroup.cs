@@ -12,6 +12,7 @@ public class AccountGroup : AuditableEntity
     public AccountType AccountType { get; private set; }
     public Guid? ParentGroupId { get; private set; }
     public bool IsSystem { get; private set; } = false;
+    public bool IsActive { get; private set; } = true;
     public int DisplayOrder { get; private set; }
 
     // Navigation
@@ -33,5 +34,19 @@ public class AccountGroup : AuditableEntity
             IsSystem = isSystem,
             DisplayOrder = displayOrder
         };
+    }
+
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Account group name is required.", nameof(name));
+        Name = name.Trim();
+    }
+
+    public void SetActive(bool isActive)
+    {
+        if (!isActive && IsSystem)
+            throw new InvalidOperationException("System account groups cannot be deactivated.");
+        IsActive = isActive;
     }
 }

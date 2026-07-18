@@ -9,6 +9,7 @@ public class UnitOfWork : IUnitOfWork
     private IDbContextTransaction? _currentTransaction;
 
     public ICompanyRepository Companies { get; }
+    public IAccountGroupRepository AccountGroups { get; }
     public ILedgerRepository Ledgers { get; }
     public IJournalEntryRepository JournalEntries { get; }
     public ICustomerRepository Customers { get; }
@@ -20,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     public IItemRepository Items { get; }
     public IStockBalanceRepository StockBalances { get; }
     public IUnitRepository Units { get; }
+    public IItemCategoryRepository ItemCategories { get; }
     public IWarehouseRepository Warehouses { get; }
     public IStockMovementRepository StockMovements { get; }
     public IUserRepository Users { get; }
@@ -30,6 +32,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context;
         Companies = new CompanyRepository(context);
+        AccountGroups = new AccountGroupRepository(context);
         Ledgers = new LedgerRepository(context);
         JournalEntries = new JournalEntryRepository(context);
         Customers = new CustomerRepository(context);
@@ -41,6 +44,7 @@ public class UnitOfWork : IUnitOfWork
         Items = new ItemRepository(context);
         StockBalances = new StockBalanceRepository(context);
         Units = new UnitRepository(context);
+        ItemCategories = new ItemCategoryRepository(context);
         Warehouses = new WarehouseRepository(context);
         StockMovements = new StockMovementRepository(context);
         Users = new UserRepository(context);
@@ -65,6 +69,10 @@ public class UnitOfWork : IUnitOfWork
             await _currentTransaction.CommitAsync();
             await _currentTransaction.DisposeAsync();
             _currentTransaction = null;
+            // Desktop screens keep a scope alive while the user works.  Detach
+            // completed aggregates so a later save re-reads current row versions
+            // instead of attempting to write a stale tracked instance.
+            _context.ChangeTracker.Clear();
         }
     }
 

@@ -10,6 +10,11 @@ public interface ICompanyRepository : IRepository<Company>
     Task<bool> ExistsByNameAsync(Guid createdByUserId, string name);
 }
 
+public interface IAccountGroupRepository : IRepository<AccountGroup>
+{
+    Task<IReadOnlyList<AccountGroup>> GetByCompanyAsync(Guid companyId);
+}
+
 public interface ILedgerRepository : IRepository<Ledger>
 {
     Task<Ledger?> GetByIdWithAccountGroupAsync(Guid id);
@@ -44,9 +49,11 @@ public interface ISupplierRepository : IRepository<Supplier>
 public interface ISalesInvoiceRepository : IRepository<SalesInvoice>
 {
     Task<SalesInvoice?> GetByIdWithDetailsAsync(Guid id);
+    Task AddLineAsync(SalesInvoiceLine line);
     Task<IReadOnlyList<SalesInvoice>> GetByCompanyAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null);
     Task<IReadOnlyList<SalesInvoice>> GetByCustomerAsync(Guid customerId);
     Task<string> GetNextInvoiceNumberAsync(Guid companyId);
+    Task<string> GetNextCreditNoteNumberAsync(Guid companyId);
 }
 
 public interface IReceiptRepository : IRepository<Receipt>
@@ -61,9 +68,11 @@ public interface IReceiptRepository : IRepository<Receipt>
 public interface IPurchaseBillRepository : IRepository<PurchaseBill>
 {
     Task<PurchaseBill?> GetByIdWithDetailsAsync(Guid id);
+    Task AddLineAsync(PurchaseBillLine line);
     Task<IReadOnlyList<PurchaseBill>> GetByCompanyAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null);
     Task<IReadOnlyList<PurchaseBill>> GetBySupplierAsync(Guid supplierId);
     Task<string> GetNextBillNumberAsync(Guid companyId);
+    Task<string> GetNextDebitNoteNumberAsync(Guid companyId);
 }
 
 public interface IPaymentRepository : IRepository<Payment>
@@ -90,6 +99,11 @@ public interface IWarehouseRepository : IRepository<Warehouse>
 public interface IUnitRepository : IRepository<Unit>
 {
     Task<IReadOnlyList<Unit>> GetByCompanyAsync(Guid companyId);
+}
+
+public interface IItemCategoryRepository : IRepository<ItemCategory>
+{
+    Task<IReadOnlyList<ItemCategory>> GetByCompanyAsync(Guid companyId);
 }
 
 public interface IStockMovementRepository : IRepository<StockMovement>

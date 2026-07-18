@@ -77,6 +77,9 @@ public partial class ReceiptViewModel : ObservableObject, IWorkspaceDocumentStat
     [ObservableProperty]
     private ObservableCollection<string> _availableCustomers = new();
 
+    [ObservableProperty]
+    private ObservableCollection<OutstandingDocumentAllocationViewModel> _openInvoices = new();
+
     public string[] PaymentMethods { get; } = { "Cash", "Cheque", "Bank Transfer", "Mobile Money", "Card" };
 
     public ReceiptViewModel(
@@ -110,7 +113,50 @@ public partial class ReceiptViewModel : ObservableObject, IWorkspaceDocumentStat
         }
     }
 
-    partial void OnCustomerNameChanged(string value) => MarkDirty();
+    private async Task LoadOpenInvoicesAsync()
+    {
+        var companyId = _session.CompanyId;
+        if (!companyId.HasValue || string.IsNullOrWhiteSpace(CustomerName))
+        {
+            OpenInvoices.Clear();
+            return;
+        }
+
+        try
+        {
+            var customer = (await _dataService.GetCustomersAsync(companyId.Value))
+                .FirstOrDefault(candidate => string.Equals(
+                    candidate.Name, CustomerName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (customer == null)
+            {
+                OpenInvoices.Clear();
+                return;
+            }
+
+            var invoices = await _salesService.GetInvoicesAsync(companyId.Value);
+            OpenInvoices = new ObservableCollection<OutstandingDocumentAllocationViewModel>(invoices
+                .Where(invoice => invoice.CustomerId == customer.Id && invoice.BalanceDue > 0
+                    && invoice.Status is not InvoiceStatusDto.Draft and not InvoiceStatusDto.Cancelled)
+                .OrderBy(invoice => invoice.InvoiceDate)
+                .Select(invoice => new OutstandingDocumentAllocationViewModel
+                {
+                    DocumentId = invoice.Id,
+                    DocumentNumber = invoice.InvoiceNumber,
+                    DocumentDate = invoice.InvoiceDate,
+                    BalanceDue = invoice.BalanceDue
+                }));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not load outstanding invoices: {ex.Message}";
+        }
+    }
+
+    partial void OnCustomerNameChanged(string value)
+    {
+        MarkDirty();
+        _ = LoadOpenInvoicesAsync();
+    }
 
     partial void OnReceiptDateTextChanged(string value)
     {
@@ -212,7 +258,8 @@ public partial class ReceiptViewModel : ObservableObject, IWorkspaceDocumentStat
 
             var customer = await _dataService.GetOrCreateCustomerAsync(companyId, customerName, userId);
 
-            // Allocate to the oldest outstanding invoices first; any remainder is an advance.
+            // Use the amounts entered in the allocation table. If none were entered,
+            // retain the convenient oldest-first behaviour; any remainder is an advance.
             var openInvoices = (await _salesService.GetInvoicesAsync(companyId))
                 .Where(i => i.CustomerId == customer.Id
                     && i.BalanceDue > 0
@@ -222,19 +269,43 @@ public partial class ReceiptViewModel : ObservableObject, IWorkspaceDocumentStat
                 .ToList();
 
             var allocations = new List<ReceiptAllocationRequest>();
-            var remaining = amount;
-            foreach (var invoice in openInvoices)
+            foreach (var allocation in OpenInvoices)
             {
-                if (remaining <= 0)
-                    break;
+                if (string.IsNullOrWhiteSpace(allocation.AmountText))
+                    continue;
+                if (!DocumentInput.TryParseDecimal(allocation.AmountText, out var allocationAmount)
+                    || allocationAmount <= 0)
+                    throw new InvalidOperationException($"Enter a positive allocation for {allocation.DocumentNumber} or leave it blank.");
+                if (allocationAmount > allocation.BalanceDue)
+                    throw new InvalidOperationException($"Allocation for {allocation.DocumentNumber} exceeds its balance due.");
 
-                var applied = Math.Min(remaining, invoice.BalanceDue);
                 allocations.Add(new ReceiptAllocationRequest
                 {
-                    SalesInvoiceId = invoice.Id,
-                    AmountAllocated = applied
+                    SalesInvoiceId = allocation.DocumentId,
+                    AmountAllocated = allocationAmount
                 });
-                remaining -= applied;
+            }
+
+            var remaining = amount - allocations.Sum(allocation => allocation.AmountAllocated);
+            if (remaining < 0)
+                throw new InvalidOperationException("Selected invoice allocations exceed the receipt amount.");
+
+            if (allocations.Count == 0)
+            {
+                remaining = amount;
+                foreach (var invoice in openInvoices)
+                {
+                    if (remaining <= 0)
+                        break;
+
+                    var applied = Math.Min(remaining, invoice.BalanceDue);
+                    allocations.Add(new ReceiptAllocationRequest
+                    {
+                        SalesInvoiceId = invoice.Id,
+                        AmountAllocated = applied
+                    });
+                    remaining -= applied;
+                }
             }
 
             var receipt = await _salesService.RecordReceiptAsync(new CreateReceiptRequest
@@ -359,7 +430,8 @@ public partial class ReceiptViewModel : ObservableObject, IWorkspaceDocumentStat
             PaymentMethod = "Cash";
             BankName = "";
             Reference = "";
-            Narration = "";
+        Narration = "";
+        OpenInvoices.Clear();
             IsDocumentEditable = true;
             CanPrint = false;
         }

@@ -20,6 +20,12 @@
                 <StackPanel Grid.Row="0">
                     <TextBlock Text="Purchase Bill" Style="{DynamicResource ViewTitle}"/>
                     <TextBlock Text="Capture the supplier bill first, then post it after quantities, dates, and tax are confirmed." Style="{DynamicResource ViewSubtitle}" Margin="0,4,0,14"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Saved drafts" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                        <ComboBox ItemsSource="{Binding DraftBills}" SelectedItem="{Binding SelectedDraft}" DisplayMemberPath="BillNumber" Width="180" Margin="0,0,8,0"/>
+                        <Button Content="Load Draft" Command="{Binding LoadDraftCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
+                        <Button Content="Discard Draft" Command="{Binding DiscardDraftCommand}" Style="{DynamicResource SecondaryButton}"/>
+                    </StackPanel>
                 </StackPanel>
                 <Grid Grid.Row="1" IsEnabled="{Binding IsDocumentEditable}">
                     <Grid.ColumnDefinitions>

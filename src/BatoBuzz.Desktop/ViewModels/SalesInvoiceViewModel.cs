@@ -75,6 +75,12 @@ public partial class SalesInvoiceViewModel : ObservableObject
     private ObservableCollection<string> _availableCustomers = new();
 
     [ObservableProperty]
+    private ObservableCollection<SalesInvoiceDto> _draftInvoices = new();
+
+    [ObservableProperty]
+    private SalesInvoiceDto? _selectedDraft;
+
+    [ObservableProperty]
     private string _statusMessage = "";
 
     [ObservableProperty]
@@ -109,6 +115,12 @@ public partial class SalesInvoiceViewModel : ObservableObject
 
         var customers = await _dataService.GetCustomersAsync(_session.CompanyId.Value);
         AvailableCustomers = new ObservableCollection<string>(customers.Where(c => c.IsActive).OrderBy(c => c.Name).Select(c => c.Name));
+
+        var invoices = await _salesService.GetInvoicesAsync(_session.CompanyId.Value);
+        DraftInvoices = new ObservableCollection<SalesInvoiceDto>(
+            invoices.Where(invoice => invoice.Status == BatoBuzz.Contracts.Common.InvoiceStatusDto.Draft)
+                .OrderByDescending(invoice => invoice.InvoiceDate)
+                .ThenByDescending(invoice => invoice.InvoiceNumber));
     }
 
     partial void OnInvoiceDateChanged(DateTime value) =>
@@ -187,6 +199,87 @@ public partial class SalesInvoiceViewModel : ObservableObject
         IsPosted = false;
         StatusMessage = "Ready for a new invoice.";
         AddLine();
+    }
+
+    [RelayCommand]
+    private void LoadDraft()
+    {
+        if (SelectedDraft == null)
+        {
+            StatusMessage = "Select a saved draft to load.";
+            return;
+        }
+
+        foreach (var line in Lines)
+            line.PropertyChanged -= OnLinePropertyChanged;
+        Lines.Clear();
+
+        _savedInvoiceId = SelectedDraft.Id;
+        _printSnapshot = null;
+        InvoiceNumber = SelectedDraft.InvoiceNumber;
+        InvoiceDate = SelectedDraft.InvoiceDate;
+        DueDate = SelectedDraft.DueDate;
+        CustomerName = SelectedDraft.CustomerName;
+        Reference = SelectedDraft.Reference ?? "";
+        Narration = SelectedDraft.Narration ?? "";
+        IsVatApplicable = SelectedDraft.IsVatApplicable;
+        VatRate = SelectedDraft.VatRate;
+
+        foreach (var draftLine in SelectedDraft.Lines)
+        {
+            var line = new InvoiceLineViewModel
+            {
+                LineNumber = Lines.Count + 1,
+                SelectedItem = draftLine.ItemId.HasValue
+                    ? AvailableItems.FirstOrDefault(item => item.Id == draftLine.ItemId.Value)
+                    : null,
+                Description = draftLine.Description,
+                Quantity = draftLine.Quantity,
+                Rate = draftLine.Rate,
+                DiscountPercent = draftLine.DiscountPercent,
+                TaxPercent = draftLine.TaxPercent
+            };
+            line.PropertyChanged += OnLinePropertyChanged;
+            Lines.Add(line);
+        }
+
+        if (Lines.Count == 0)
+            AddLine();
+
+        CalculateTotals();
+        IsDocumentEditable = true;
+        CanPrint = false;
+        CanPost = true;
+        IsPosted = false;
+        StatusMessage = $"Loaded draft {InvoiceNumber}.";
+    }
+
+    [RelayCommand]
+    private async Task DiscardDraft()
+    {
+        var draft = SelectedDraft ?? DraftInvoices.FirstOrDefault(invoice => invoice.Id == _savedInvoiceId);
+        if (draft == null)
+        {
+            StatusMessage = "Select or load a draft to discard.";
+            return;
+        }
+
+        if (MessageBox.Show(
+                $"Discard draft {draft.InvoiceNumber}? This cannot be undone.",
+                "Discard Draft", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            await _salesService.DeleteDraftInvoiceAsync(draft.Id, _session.UserId);
+            NewInvoice();
+            await LoadDataAsync();
+            StatusMessage = $"Discarded draft {draft.InvoiceNumber}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -404,14 +497,6 @@ public partial class SalesInvoiceViewModel : ObservableObject
 
         if (_savedInvoiceId.HasValue)
         {
-            if (!post)
-            {
-                StatusMessage = IsPosted
-                    ? $"Invoice {InvoiceNumber} is already posted. Select New Invoice to start another."
-                    : $"Draft {InvoiceNumber} is already saved. Post it or select New Invoice.";
-                return;
-            }
-
             if (IsPosted)
             {
                 StatusMessage = $"Invoice {InvoiceNumber} is already posted. Select New Invoice to start another.";
@@ -420,10 +505,54 @@ public partial class SalesInvoiceViewModel : ObservableObject
 
             try
             {
-                var postedInvoice = await _salesService.PostInvoiceAsync(_savedInvoiceId.Value, _session.UserId);
-                IsPosted = true;
-                CanPost = false;
-                StatusMessage = $"Posted {postedInvoice.InvoiceNumber}.";
+                CalculateTotals();
+                var validLines = Lines.Where(l =>
+                    !string.IsNullOrWhiteSpace(l.Description) && l.Quantity > 0 && l.Rate > 0).ToList();
+                if (validLines.Count == 0)
+                    throw new InvalidOperationException("Add at least one invoice line with description, quantity, and rate.");
+
+                var customer = await _dataService.GetOrCreateCustomerAsync(_session.CompanyId.Value, CustomerName, _session.UserId);
+                var savedInvoice = await _salesService.UpdateDraftInvoiceAsync(_savedInvoiceId.Value, new CreateSalesInvoiceRequest
+                {
+                    CompanyId = _session.CompanyId.Value,
+                    CustomerId = customer.Id,
+                    InvoiceDate = InvoiceDate,
+                    DueDate = DueDate,
+                    Reference = string.IsNullOrWhiteSpace(Reference) ? null : Reference.Trim(),
+                    Narration = string.IsNullOrWhiteSpace(Narration) ? null : Narration.Trim(),
+                    IsVatApplicable = IsVatApplicable,
+                    VatRate = VatRate,
+                    Lines = validLines.Select(l => new SalesInvoiceLineRequest
+                    {
+                        ItemId = l.ItemId,
+                        Description = l.Description.Trim(),
+                        Quantity = l.Quantity,
+                        Rate = l.Rate,
+                        DiscountPercent = l.DiscountPercent,
+                        TaxPercent = IsVatApplicable ? l.TaxPercent : 0
+                    }).ToList()
+                }, _session.UserId);
+
+                InvoiceNumber = savedInvoice.InvoiceNumber;
+                SubTotal = savedInvoice.SubTotal;
+                DiscountAmount = savedInvoice.DiscountAmount;
+                VatAmount = savedInvoice.VatAmount;
+                TotalAmount = savedInvoice.TotalAmount;
+
+                if (post)
+                {
+                    var postedInvoice = await _salesService.PostInvoiceAsync(_savedInvoiceId.Value, _session.UserId);
+                    IsPosted = true;
+                    CanPost = false;
+                    IsDocumentEditable = false;
+                    StatusMessage = $"Posted {postedInvoice.InvoiceNumber}.";
+                    await LoadDataAsync();
+                }
+                else
+                {
+                    StatusMessage = $"Updated draft {InvoiceNumber}.";
+                    await LoadDataAsync();
+                }
             }
             catch (Exception ex)
             {

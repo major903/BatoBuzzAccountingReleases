@@ -23,4 +23,6 @@ public class Unit : AuditableEntity
             ShortName = shortName ?? name
         };
     }
+
+    public void SetActive(bool isActive) => IsActive = isActive;
 }

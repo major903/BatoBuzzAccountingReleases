@@ -25,4 +25,6 @@ public class ItemCategory : AuditableEntity
             ParentCategoryId = parentCategoryId
         };
     }
+
+    public void SetActive(bool isActive) => IsActive = isActive;
 }

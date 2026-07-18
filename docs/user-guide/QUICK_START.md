@@ -36,8 +36,10 @@ The local database is created at:
 1. **Company Setup** — legal details and the active financial year.
 2. **Customers and Suppliers** — names, contact details, PAN/VAT information,
    and opening balances.
-3. **Inventory** — units, warehouses, item codes, prices, costs, reorder levels,
-   and opening stock.
+3. **Inventory** — create the units, warehouses, and categories you need, then
+   create items with their prices, costs, reorder levels, and chosen unit/category.
+   Record opening stock, damage/write-offs, and dated reversals against the
+   selected warehouse. The default Piece unit and Main Warehouse remain available.
 4. **Tax Settings** — add only rates confirmed by a qualified Nepal accountant.
    TDS rates are not preloaded.
 5. **Opening accounting entries** — reconcile the resulting Trial Balance
@@ -66,6 +68,10 @@ correction date, and enter a clear reason.
 - A sales cancellation restores the exact quantity and value recorded by the
   original sale. A purchase cancellation is refused when later stock use makes
   an exact reversal unsafe.
+- For a completed, unpaid sale or purchase, enter the return percentage and
+  choose **Issue Credit Note** or **Issue Debit Note** instead of cancelling the
+  source. The numbered return note reverses that proportional party, tax, and
+  stock posting together; reverse related receipts or payments first.
 - Manual journals can be reversed only from the manual-journal tab. Operational
   vouchers must be corrected from their own document tab.
 - A correction cannot be dated before its source and cannot cross a period lock.

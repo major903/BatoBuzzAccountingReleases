@@ -242,6 +242,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void ShowChartOfAccounts()
+    {
+        NavigateToTab<ChartOfAccountsViewModel>("Chart of Accounts");
+    }
+
+    [RelayCommand]
     private void ShowBankReconciliation()
     {
         NavigateToTab<BankReconciliationViewModel>("Bank Rec");

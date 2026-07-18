@@ -7,8 +7,13 @@ public class SalesInvoiceDto
     public Guid Id { get; set; }
     public string InvoiceNumber { get; set; } = null!;
     public DateTime InvoiceDate { get; set; }
+    public DateTime DueDate { get; set; }
     public Guid CustomerId { get; set; }
     public string CustomerName { get; set; } = null!;
+    public string? Reference { get; set; }
+    public string? Narration { get; set; }
+    public bool IsVatApplicable { get; set; }
+    public decimal VatRate { get; set; }
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal VatAmount { get; set; }
@@ -22,12 +27,25 @@ public class SalesInvoiceDto
     public List<SalesInvoiceLineDto> Lines { get; set; } = new();
 }
 
+public class OperationalNoteDto
+{
+    public Guid JournalEntryId { get; set; }
+    public string NoteNumber { get; set; } = "";
+    public DateTime NoteDate { get; set; }
+    public decimal Amount { get; set; }
+    public string SourceDocumentNumber { get; set; } = "";
+}
+
 public class SalesInvoiceLineDto
 {
     public Guid Id { get; set; }
+    public Guid? ItemId { get; set; }
+    public Guid? WarehouseId { get; set; }
     public string Description { get; set; } = null!;
     public decimal Quantity { get; set; }
     public decimal Rate { get; set; }
+    public decimal DiscountPercent { get; set; }
+    public decimal TaxPercent { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal LineTotal { get; set; }
@@ -53,9 +71,16 @@ public class PurchaseBillDto
     public Guid Id { get; set; }
     public string BillNumber { get; set; } = null!;
     public DateTime BillDate { get; set; }
+    public DateTime DueDate { get; set; }
     public Guid SupplierId { get; set; }
     public string SupplierName { get; set; } = null!;
+    public string? SupplierInvoiceNumber { get; set; }
+    public string? Reference { get; set; }
+    public string? Narration { get; set; }
+    public bool IsVatApplicable { get; set; }
+    public decimal VatRate { get; set; }
     public decimal SubTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal VatAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal AmountPaid { get; set; }
@@ -64,6 +89,22 @@ public class PurchaseBillDto
     public Guid? PostedJournalEntryId { get; set; }
     public DateTime? CorrectionDate { get; set; }
     public string? CorrectionReason { get; set; }
+    public List<PurchaseBillLineDto> Lines { get; set; } = new();
+}
+
+public class PurchaseBillLineDto
+{
+    public Guid Id { get; set; }
+    public Guid? ItemId { get; set; }
+    public Guid? WarehouseId { get; set; }
+    public string Description { get; set; } = null!;
+    public decimal Quantity { get; set; }
+    public decimal Rate { get; set; }
+    public decimal DiscountPercent { get; set; }
+    public decimal TaxPercent { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal { get; set; }
 }
 
 public class PaymentDto

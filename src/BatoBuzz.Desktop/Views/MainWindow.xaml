@@ -55,6 +55,9 @@
         <DataTemplate DataType="{x:Type vm:JournalEntryViewModel}">
             <views:JournalEntryView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ChartOfAccountsViewModel}">
+            <views:ChartOfAccountsView/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ReportsViewModel}">
             <views:ReportsView/>
         </DataTemplate>
@@ -213,7 +216,7 @@
             </MenuItem>
             <MenuItem Header="_Accounting" IsEnabled="{Binding IsAuthenticated}">
                 <MenuItem Header="_Journal Entry" Command="{Binding ShowJournalEntryCommand}"/>
-                <MenuItem Header="_Chart of Accounts" Command="{Binding ShowReportCommand}" CommandParameter="Chart of Accounts"/>
+                <MenuItem Header="_Chart of Accounts" Command="{Binding ShowChartOfAccountsCommand}"/>
                 <MenuItem Header="_Day Book" Command="{Binding ShowReportCommand}" CommandParameter="Day Book"/>
                 <MenuItem Header="_Trial Balance" Command="{Binding ShowReportCommand}" CommandParameter="Trial Balance"/>
                 <MenuItem Header="_Bank Reconciliation" Command="{Binding ShowBankReconciliationCommand}"/>

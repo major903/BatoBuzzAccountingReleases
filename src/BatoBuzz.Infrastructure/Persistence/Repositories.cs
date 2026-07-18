@@ -124,6 +124,14 @@ public class CompanyRepository : Repository<Company>, ICompanyRepository
     }
 }
 
+public class AccountGroupRepository : Repository<AccountGroup>, IAccountGroupRepository
+{
+    public AccountGroupRepository(BatoBuzzDbContext context) : base(context) { }
+
+    public async Task<IReadOnlyList<AccountGroup>> GetByCompanyAsync(Guid companyId) =>
+        await _dbSet.Where(group => group.CompanyId == companyId).ToListAsync();
+}
+
 public class LedgerRepository : Repository<Ledger>, ILedgerRepository
 {
     public LedgerRepository(BatoBuzzDbContext context) : base(context) { }
@@ -241,7 +249,10 @@ public class SalesInvoiceRepository : Repository<SalesInvoice>, ISalesInvoiceRep
                     .Include(i => i.Lines)
                     .Include(i => i.PostedJournalEntry)
                     .ThenInclude(j => j!.Lines)
-                    .FirstOrDefaultAsync(i => i.Id == id);
+                     .FirstOrDefaultAsync(i => i.Id == id);
+
+    public async Task AddLineAsync(SalesInvoiceLine line) =>
+        await _context.SalesInvoiceLines.AddAsync(line);
 
     public async Task<IReadOnlyList<SalesInvoice>> GetByCompanyAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null)
     {
@@ -262,6 +273,12 @@ public class SalesInvoiceRepository : Repository<SalesInvoice>, ISalesInvoiceRep
     {
         var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "SalesInvoice");
         return $"INV-{nextNumber:D6}";
+    }
+
+    public async Task<string> GetNextCreditNoteNumberAsync(Guid companyId)
+    {
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "CreditNote");
+        return $"CN-{nextNumber:D6}";
     }
 }
 
@@ -308,7 +325,10 @@ public class PurchaseBillRepository : Repository<PurchaseBill>, IPurchaseBillRep
                     .Include(b => b.Lines)
                     .Include(b => b.PostedJournalEntry)
                     .ThenInclude(j => j!.Lines)
-                    .FirstOrDefaultAsync(b => b.Id == id);
+                     .FirstOrDefaultAsync(b => b.Id == id);
+
+    public async Task AddLineAsync(PurchaseBillLine line) =>
+        await _context.PurchaseBillLines.AddAsync(line);
 
     public async Task<IReadOnlyList<PurchaseBill>> GetByCompanyAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null)
     {
@@ -329,6 +349,12 @@ public class PurchaseBillRepository : Repository<PurchaseBill>, IPurchaseBillRep
     {
         var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "PurchaseBill");
         return $"BILL-{nextNumber:D6}";
+    }
+
+    public async Task<string> GetNextDebitNoteNumberAsync(Guid companyId)
+    {
+        var nextNumber = await AllocateNextDocumentNumberAsync(companyId, "DebitNote");
+        return $"DN-{nextNumber:D6}";
     }
 }
 
@@ -413,6 +439,14 @@ public class UnitRepository : Repository<Unit>, IUnitRepository
 
     public async Task<IReadOnlyList<Unit>> GetByCompanyAsync(Guid companyId) =>
         await _dbSet.Where(u => u.CompanyId == companyId).ToListAsync();
+}
+
+public class ItemCategoryRepository : Repository<ItemCategory>, IItemCategoryRepository
+{
+    public ItemCategoryRepository(BatoBuzzDbContext context) : base(context) { }
+
+    public async Task<IReadOnlyList<ItemCategory>> GetByCompanyAsync(Guid companyId) =>
+        await _dbSet.Where(category => category.CompanyId == companyId).ToListAsync();
 }
 
 public class StockMovementRepository : Repository<StockMovement>, IStockMovementRepository

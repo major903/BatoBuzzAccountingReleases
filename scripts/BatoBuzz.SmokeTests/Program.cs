@@ -50,7 +50,7 @@ try
         await migrationCheck.OpenAsync();
         await using var command = migrationCheck.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM __BatoBuzzSchemaMigrations";
-        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 6,
+        Require(Convert.ToInt32(await command.ExecuteScalarAsync()) == 9,
             "SQLite schema upgrades were not applied exactly once.");
         command.CommandText =
             "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'TdsRates'";
@@ -140,6 +140,32 @@ try
     var supplier = await data.GetOrCreateSupplierAsync(company.Id, "Smoke Supplier", userId);
     var unit = await data.GetOrCreateUnitAsync(company.Id, "Piece");
     var warehouse = await data.GetOrCreateWarehouseAsync(company.Id, "Main Warehouse");
+    var archiveUnit = await data.GetOrCreateUnitAsync(company.Id, "Smoke Archive Unit");
+    await data.SetUnitActiveAsync(archiveUnit.Id, false, userId);
+    Require(!(await data.GetUnitsAsync(company.Id)).Single(unit => unit.Id == archiveUnit.Id).IsActive,
+        "Unit deactivation failed.");
+    var archiveCategory = await data.GetOrCreateItemCategoryAsync(company.Id, "Smoke Archive Category");
+    await data.SetItemCategoryActiveAsync(archiveCategory.Id, false, userId);
+    Require(!(await data.GetItemCategoriesAsync(company.Id)).Single(category => category.Id == archiveCategory.Id).IsActive,
+        "Item category deactivation failed.");
+    var archiveWarehouse = await data.GetOrCreateWarehouseAsync(company.Id, "Smoke Archive Warehouse");
+    await data.SetWarehouseActiveAsync(archiveWarehouse.Id, false, userId);
+    Require(!(await data.GetWarehousesAsync(company.Id)).Single(warehouse => warehouse.Id == archiveWarehouse.Id).IsActive,
+        "Non-default warehouse deactivation failed.");
+    var editableGroup = await data.CreateAccountGroupAsync(
+        company.Id, "Smoke Editable Group", AccountType.Expense, userId);
+    editableGroup = await data.RenameAccountGroupAsync(
+        company.Id, editableGroup.Id, "Smoke Renamed Group", userId);
+    Require(editableGroup.Name == "Smoke Renamed Group", "Account group rename failed.");
+    var editableLedger = await data.CreateLedgerAsync(
+        company.Id, editableGroup.Id, "Smoke Editable Ledger", "SMK-LED", LedgerType.General, userId);
+    editableLedger = await data.UpdateLedgerAsync(
+        editableLedger.Id, "Smoke Updated Ledger", "SMK-LED-2", false, userId);
+    Require(!editableLedger.IsActive && editableLedger.Name == "Smoke Updated Ledger",
+        "Ledger update or deactivation failed.");
+    await data.SetAccountGroupActiveAsync(company.Id, editableGroup.Id, false, userId);
+    Require(!(await data.GetAccountGroupsAsync(company.Id)).Single(group => group.Id == editableGroup.Id).IsActive,
+        "Account group deactivation failed.");
 
     var item = await inventory.CreateItemAsync(new CreateItemRequest
     {
@@ -153,6 +179,9 @@ try
         SalePrice = 150,
         CostingMethod = (int)CostingMethod.WeightedAverage
     }, userId);
+    item = await inventory.UpdateItemAsync(
+        item.Id, "Smoke Inventory Item", "SMK-ITEM-UPDATED", 100, 150, 5, true, userId);
+    Require(item.Code == "SMK-ITEM-UPDATED", "Item update failed.");
 
     await inventory.RecordStockMovementAsync(new CreateStockMovementRequest
     {
@@ -165,6 +194,66 @@ try
         UnitCost = 100,
         Narration = "Smoke opening stock"
     }, userId);
+
+    var recoverableInvoice = await sales.CreateInvoiceAsync(new CreateSalesInvoiceRequest
+    {
+        CompanyId = company.Id,
+        CustomerId = customer.Id,
+        InvoiceDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(7),
+        Reference = "SMOKE-DRAFT-INV",
+        Lines =
+        {
+            new SalesInvoiceLineRequest { ItemId = item.Id, WarehouseId = warehouse.Id, Description = "Draft invoice", Quantity = 1, Rate = 100, TaxPercent = 13 }
+        }
+    }, userId);
+    recoverableInvoice = await sales.UpdateDraftInvoiceAsync(recoverableInvoice.Id, new CreateSalesInvoiceRequest
+    {
+        CompanyId = company.Id,
+        CustomerId = customer.Id,
+        InvoiceDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(10),
+        Reference = "SMOKE-DRAFT-INV-UPDATED",
+        Lines =
+        {
+            new SalesInvoiceLineRequest { ItemId = item.Id, WarehouseId = warehouse.Id, Description = "Updated draft invoice", Quantity = 1, Rate = 125, TaxPercent = 13 }
+        }
+    }, userId);
+    Require(recoverableInvoice.Reference == "SMOKE-DRAFT-INV-UPDATED" && recoverableInvoice.Lines.Single().Rate == 125,
+        "Saved sales draft could not be updated and reloaded.");
+    await sales.DeleteDraftInvoiceAsync(recoverableInvoice.Id, userId);
+    Require(!(await sales.GetInvoicesAsync(company.Id)).Any(invoice => invoice.Id == recoverableInvoice.Id),
+        "Saved sales draft could not be discarded.");
+
+    var recoverableBill = await purchases.CreateBillAsync(new CreatePurchaseBillRequest
+    {
+        CompanyId = company.Id,
+        SupplierId = supplier.Id,
+        BillDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(7),
+        Reference = "SMOKE-DRAFT-BILL",
+        Lines =
+        {
+            new PurchaseBillLineRequest { ItemId = item.Id, WarehouseId = warehouse.Id, Description = "Draft bill", Quantity = 1, Rate = 80, TaxPercent = 13 }
+        }
+    }, userId);
+    recoverableBill = await purchases.UpdateDraftBillAsync(recoverableBill.Id, new CreatePurchaseBillRequest
+    {
+        CompanyId = company.Id,
+        SupplierId = supplier.Id,
+        BillDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(10),
+        Reference = "SMOKE-DRAFT-BILL-UPDATED",
+        Lines =
+        {
+            new PurchaseBillLineRequest { ItemId = item.Id, WarehouseId = warehouse.Id, Description = "Updated draft bill", Quantity = 1, Rate = 85, TaxPercent = 13 }
+        }
+    }, userId);
+    Require(recoverableBill.Reference == "SMOKE-DRAFT-BILL-UPDATED" && recoverableBill.Lines.Single().Rate == 85,
+        "Saved purchase draft could not be updated and reloaded.");
+    await purchases.DeleteDraftBillAsync(recoverableBill.Id, userId);
+    Require(!(await purchases.GetBillsAsync(company.Id)).Any(bill => bill.Id == recoverableBill.Id),
+        "Saved purchase draft could not be discarded.");
 
     var limitedCustomer = await data.CreateCustomerAsync(
         company.Id, "Credit Limited Customer", null, null, null, null, null, 50m, userId);
@@ -305,6 +394,111 @@ try
     Require(stock.Any(s => s.ItemId == item.Id && s.Quantity == 11),
         "Inventory stock balance should be opening 10 + purchase 3 - sale 2 = 11.");
 
+    var returnCustomer = await data.CreateCustomerAsync(
+        company.Id, "Return Note Customer", null, null, null, null, null, 0, userId);
+    var returnInvoice = await sales.CreateInvoiceAsync(new CreateSalesInvoiceRequest
+    {
+        CompanyId = company.Id,
+        CustomerId = returnCustomer.Id,
+        InvoiceDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(10),
+        IsVatApplicable = false,
+        VatRate = 0,
+        Lines =
+        {
+            new SalesInvoiceLineRequest
+            {
+                ItemId = item.Id,
+                WarehouseId = warehouse.Id,
+                Description = "Credit note return test",
+                Quantity = 1,
+                Rate = 100,
+                TaxPercent = 0
+            }
+        }
+    }, userId);
+    returnInvoice = await sales.PostInvoiceAsync(returnInvoice.Id, userId);
+    var creditNote = await sales.IssueCreditNoteAsync(returnInvoice.Id, new CorrectPostedDocumentRequest
+    {
+        CorrectionDate = DateTime.Today,
+        Reason = "Smoke first partial customer return",
+        ReturnPercent = 50
+    }, userId);
+    Require(creditNote.NoteNumber.StartsWith("CN-") && creditNote.Amount == 50m,
+        "Partial sales return did not issue a credit note.");
+    Require((await sales.GetInvoicesAsync(company.Id)).Single(invoice => invoice.Id == returnInvoice.Id).BalanceDue == 50m,
+        "Partial credit note did not reduce the invoice balance due.");
+    creditNote = await sales.IssueCreditNoteAsync(returnInvoice.Id, new CorrectPostedDocumentRequest
+    {
+        CorrectionDate = DateTime.Today,
+        Reason = "Smoke final partial customer return",
+        ReturnPercent = 50
+    }, userId);
+    Require((await sales.GetInvoicesAsync(company.Id)).Single(invoice => invoice.Id == returnInvoice.Id).Status == InvoiceStatusDto.CreditNoteIssued,
+        "Credit note did not mark the original invoice as credited.");
+    await ExpectThrowsAsync<InvalidOperationException>(
+        () => sales.IssueCreditNoteAsync(returnInvoice.Id, new CorrectPostedDocumentRequest
+        {
+            CorrectionDate = DateTime.Today,
+            Reason = "Smoke over-return prevention",
+            ReturnPercent = 1
+        }, userId),
+        "Credit note allowed an over-return.");
+
+    var returnSupplier = await data.CreateSupplierAsync(
+        company.Id, "Return Note Supplier", null, null, null, null, null, 0, userId);
+    var returnBill = await purchases.CreateBillAsync(new CreatePurchaseBillRequest
+    {
+        CompanyId = company.Id,
+        SupplierId = returnSupplier.Id,
+        BillDate = DateTime.Today,
+        DueDate = DateTime.Today.AddDays(10),
+        IsVatApplicable = false,
+        VatRate = 0,
+        Lines =
+        {
+            new PurchaseBillLineRequest
+            {
+                ItemId = item.Id,
+                WarehouseId = warehouse.Id,
+                Description = "Debit note return test",
+                Quantity = 1,
+                Rate = 100,
+                TaxPercent = 0
+            }
+        }
+    }, userId);
+    returnBill = await purchases.PostBillAsync(returnBill.Id, userId);
+    var debitNote = await purchases.IssueDebitNoteAsync(returnBill.Id, new CorrectPostedDocumentRequest
+    {
+        CorrectionDate = DateTime.Today,
+        Reason = "Smoke first partial supplier return",
+        ReturnPercent = 50
+    }, userId);
+    Require(debitNote.NoteNumber.StartsWith("DN-") && debitNote.Amount == 50m,
+        "Partial purchase return did not issue a debit note.");
+    Require((await purchases.GetBillsAsync(company.Id)).Single(bill => bill.Id == returnBill.Id).BalanceDue == 50m,
+        "Partial debit note did not reduce the bill balance due.");
+    debitNote = await purchases.IssueDebitNoteAsync(returnBill.Id, new CorrectPostedDocumentRequest
+    {
+        CorrectionDate = DateTime.Today,
+        Reason = "Smoke final partial supplier return",
+        ReturnPercent = 50
+    }, userId);
+    Require((await purchases.GetBillsAsync(company.Id)).Single(bill => bill.Id == returnBill.Id).Status == BillStatusDto.DebitNoteIssued,
+        "Debit note did not mark the original bill as debited.");
+    await ExpectThrowsAsync<InvalidOperationException>(
+        () => purchases.IssueDebitNoteAsync(returnBill.Id, new CorrectPostedDocumentRequest
+        {
+            CorrectionDate = DateTime.Today,
+            Reason = "Smoke over-return prevention",
+            ReturnPercent = 1
+        }, userId),
+        "Debit note allowed an over-return.");
+    stock = await inventory.GetStockBalancesAsync(company.Id, warehouse.Id);
+    Require(stock.Single(balance => balance.ItemId == item.Id).Quantity == 11m,
+        "Full sales and purchase returns did not restore the expected stock quantity.");
+
     var stockLedger = await data.GetLedgerByNameAsync(company.Id, "Stock-in-Hand");
     var costOfGoodsSoldLedger = await data.GetLedgerByNameAsync(company.Id, "Cost of Goods Sold");
     var stockLedgerReport = await accounting.GetGeneralLedgerAsync(
@@ -363,6 +557,19 @@ try
         .First(movement => movement.MovementType == MovementType.Damage);
     Require(damageMovement.UnitCost == 100m && damageMovement.TotalCost == 100m,
         "Caller-supplied outbound unit cost was not ignored.");
+    Require(damageMovement.JournalEntryId.HasValue,
+        "Standalone stock movement was not linked to its posted journal.");
+
+    await inventory.ReverseStockMovementAsync(damageMovement.Id, new CorrectPostedDocumentRequest
+    {
+        CorrectionDate = DateTime.Today,
+        Reason = "Smoke stock movement reversal"
+    }, userId);
+    var stockAfterDamageReversal = (await inventory.GetStockBalancesAsync(company.Id, warehouse.Id))
+        .Single(balance => balance.ItemId == item.Id);
+    Require(stockAfterDamageReversal.Quantity == stockAfterDamage.Single(balance => balance.ItemId == item.Id).Quantity + 1
+            && stockAfterDamageReversal.TotalValue == stockAfterDamage.Single(balance => balance.ItemId == item.Id).TotalValue + 100m,
+        "Standalone stock movement reversal did not restore quantity and value.");
 
     // Posting-effective reports: one prior-period posting contributes to opening,
     // while a draft and a legacy reversed entry contribute nothing.

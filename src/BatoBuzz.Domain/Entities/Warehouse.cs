@@ -27,4 +27,11 @@ public class Warehouse : AuditableEntity
             IsDefault = isDefault
         };
     }
+
+    public void SetActive(bool isActive)
+    {
+        if (!isActive && IsDefault)
+            throw new InvalidOperationException("Choose another default warehouse before deactivating this warehouse.");
+        IsActive = isActive;
+    }
 }

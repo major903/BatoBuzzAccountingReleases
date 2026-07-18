@@ -20,9 +20,12 @@ public interface IAccountingService
 public interface ISalesService
 {
     Task<SalesInvoiceDto> CreateInvoiceAsync(CreateSalesInvoiceRequest request, Guid userId);
+    Task<SalesInvoiceDto> UpdateDraftInvoiceAsync(Guid invoiceId, CreateSalesInvoiceRequest request, Guid userId);
     Task<SalesInvoiceDto> PostInvoiceAsync(Guid invoiceId, Guid userId);
     Task<ReceiptDto> RecordReceiptAsync(CreateReceiptRequest request, Guid userId);
     Task<SalesInvoiceDto> CancelInvoiceAsync(Guid invoiceId, CorrectPostedDocumentRequest request, Guid userId);
+    Task<OperationalNoteDto> IssueCreditNoteAsync(Guid invoiceId, CorrectPostedDocumentRequest request, Guid userId);
+    Task DeleteDraftInvoiceAsync(Guid invoiceId, Guid userId);
     Task<ReceiptDto> ReverseReceiptAsync(Guid receiptId, CorrectPostedDocumentRequest request, Guid userId);
     Task<IReadOnlyList<SalesInvoiceDto>> GetInvoicesAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null);
     Task<IReadOnlyList<ReceiptDto>> GetReceiptsAsync(
@@ -35,9 +38,12 @@ public interface ISalesService
 public interface IPurchaseService
 {
     Task<PurchaseBillDto> CreateBillAsync(CreatePurchaseBillRequest request, Guid userId);
+    Task<PurchaseBillDto> UpdateDraftBillAsync(Guid billId, CreatePurchaseBillRequest request, Guid userId);
     Task<PurchaseBillDto> PostBillAsync(Guid billId, Guid userId);
     Task<PaymentDto> RecordPaymentAsync(CreatePaymentRequest request, Guid userId);
     Task<PurchaseBillDto> CancelBillAsync(Guid billId, CorrectPostedDocumentRequest request, Guid userId);
+    Task<OperationalNoteDto> IssueDebitNoteAsync(Guid billId, CorrectPostedDocumentRequest request, Guid userId);
+    Task DeleteDraftBillAsync(Guid billId, Guid userId);
     Task<PaymentDto> ReversePaymentAsync(Guid paymentId, CorrectPostedDocumentRequest request, Guid userId);
     Task<IReadOnlyList<PurchaseBillDto>> GetBillsAsync(Guid companyId, DateTime? fromDate = null, DateTime? toDate = null);
     Task<IReadOnlyList<PaymentDto>> GetPaymentsAsync(
@@ -50,11 +56,14 @@ public interface IPurchaseService
 public interface IInventoryService
 {
     Task<ItemDto> CreateItemAsync(CreateItemRequest request, Guid userId);
+    Task<ItemDto> UpdateItemAsync(Guid itemId, string name, string? code, decimal standardCost, decimal salePrice, decimal? reorderLevel, bool isActive, Guid userId);
     Task RecordStockMovementAsync(CreateStockMovementRequest request, Guid userId);
     Task AdjustStockAsync(CreateStockAdjustmentRequest request, Guid userId);
     Task<IReadOnlyList<StockBalanceDto>> GetStockBalancesAsync(Guid companyId, Guid? warehouseId = null);
     Task<IReadOnlyList<InventoryReportDto>> GetInventoryReportAsync(Guid companyId, Guid? warehouseId = null);
     Task<IReadOnlyList<ItemDto>> GetLowStockItemsAsync(Guid companyId);
+    Task<IReadOnlyList<StockMovementDto>> GetStockMovementsAsync(Guid companyId);
+    Task ReverseStockMovementAsync(Guid stockMovementId, CorrectPostedDocumentRequest request, Guid userId);
 }
 
 public interface ICompanyService

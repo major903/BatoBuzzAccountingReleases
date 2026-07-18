@@ -20,15 +20,16 @@ Complete the checks below in order. A ✅ means the expected result happened.
 | Test | What to do | Expected result |
 | --- | --- | --- |
 | 1. Start app | Open BatoBuzz. | The login screen opens without an error. |
-| 2. Create owner | Enter a username, email, name, and password, then choose **Create Owner Account**. | You are signed in. |
+| 2. Create owner | Enter a username and password, then choose **Create Owner Account**. | You are signed in. |
 | 3. Create company | Open **File > Company Setup** and enter a test company name such as `Demo Trading`. Save it. | The company name appears at the top of the app. |
 | 4. Add customer | Open **Sales > Customers** and create `Test Customer`. | The customer appears in the customer list. |
 | 5. Add supplier | Open **Purchase > Suppliers** and create `Test Supplier`. | The supplier appears in the supplier list. |
-| 6. Add inventory item | Open **Inventory > Items**. Create a unit, warehouse, and an item such as `Test Item`; give it a sale price and cost. | The item appears in the inventory list. |
+| 6. Add inventory item | Open **Inventory > Items**. Create an item such as `Test Item`; give it a sale price and cost. The first item uses the default Piece unit and Main Warehouse. | The item appears in the inventory list. |
 | 7. Create sale | Open **Sales > Sales Invoice**. Select `Test Customer`, add `Test Item`, save, then post the invoice. | The invoice receives a number and shows as posted. |
-| 8. Record receipt | Open **Sales > Receipts**. Select `Test Customer`, enter a small amount, and allocate it to the test invoice. | The receipt saves and reduces the invoice balance. |
+| 8. Record receipt | Open **Sales > Receipts**. Select `Test Customer`, optionally enter amounts against specific invoices, then enter a small amount. | Entered allocations are used; if all allocation fields are blank, the receipt reduces the oldest outstanding invoice first. Any remainder becomes an advance. |
 | 9. Create purchase | Open **Purchase > Purchase Bill**. Select `Test Supplier`, add `Test Item`, save, then post. | The bill receives a number and shows as posted. |
-| 10. Record payment | Open **Purchase > Payments**. Select `Test Supplier`, enter a small amount, and allocate it to the test bill. | The payment saves and reduces the bill balance. |
+| 10. Record payment | Open **Purchase > Payments**. Select `Test Supplier`, optionally enter amounts against specific bills, then enter a small amount. | Entered allocations are used; if all allocation fields are blank, the payment reduces the oldest outstanding bill first. Any remainder becomes an advance. |
+| 11. Return all or part of a document | Open **Settings > Corrections**, select an unpaid invoice or bill, enter a dated reason and a return percentage, then choose **Issue Credit Note** or **Issue Debit Note**. | A numbered note posts for that proportional share. Sales returns restore stock and reverse sales/VAT/COGS; purchase returns remove stock and reverse the purchase/VAT/payable. Reverse receipts or payments first. |
 | 11. Check reports | Open **Reports** and generate **Trial Balance**, **Profit & Loss**, and **Stock Summary**. | Reports load without an error. Trial Balance debit and credit totals match. |
 | 12. Backup | Open **File > Backup** and create a backup. | A `.db` backup file is created in the selected location. |
 | 13. Check updates | Select **Help > Check for Updates** or use the status-bar button. | The app says it is up to date, or shows the new version and its change log. |

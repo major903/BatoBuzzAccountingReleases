@@ -28,6 +28,7 @@ public partial class CorrectionsViewModel : ObservableObject
     [ObservableProperty] private JournalEntryDto? _selectedJournal;
     [ObservableProperty] private DateTime _correctionDate = DateTime.Today;
     [ObservableProperty] private string _reason = "";
+    [ObservableProperty] private decimal _returnPercent = 100m;
     [ObservableProperty] private string _statusMessage = "";
     [ObservableProperty] private bool _isBusy;
 
@@ -96,6 +97,15 @@ public partial class CorrectionsViewModel : ObservableObject
             _session.UserId));
 
     [RelayCommand]
+    private async Task IssueCreditNoteAsync() => await ExecuteAsync(
+        SelectedInvoice?.InvoiceNumber,
+        "issue a credit note for this sales invoice",
+        request => _salesService.IssueCreditNoteAsync(
+            SelectedInvoice?.Id ?? throw new InvalidOperationException("Select a sales invoice."),
+            WithReturnPercent(request),
+            _session.UserId));
+
+    [RelayCommand]
     private async Task ReverseReceiptAsync() => await ExecuteAsync(
         SelectedReceipt?.ReceiptNumber,
         "reverse this receipt",
@@ -111,6 +121,15 @@ public partial class CorrectionsViewModel : ObservableObject
         request => _purchaseService.CancelBillAsync(
             SelectedBill?.Id ?? throw new InvalidOperationException("Select a purchase bill."),
             request,
+            _session.UserId));
+
+    [RelayCommand]
+    private async Task IssueDebitNoteAsync() => await ExecuteAsync(
+        SelectedBill?.BillNumber,
+        "issue a debit note for this purchase bill",
+        request => _purchaseService.IssueDebitNoteAsync(
+            SelectedBill?.Id ?? throw new InvalidOperationException("Select a purchase bill."),
+            WithReturnPercent(request),
             _session.UserId));
 
     [RelayCommand]
@@ -167,5 +186,13 @@ public partial class CorrectionsViewModel : ObservableObject
         {
             IsBusy = false;
         }
+    }
+
+    private CorrectPostedDocumentRequest WithReturnPercent(CorrectPostedDocumentRequest request)
+    {
+        if (ReturnPercent <= 0 || ReturnPercent > 100)
+            throw new InvalidOperationException("Return percent must be greater than zero and no more than 100.");
+        request.ReturnPercent = ReturnPercent;
+        return request;
     }
 }

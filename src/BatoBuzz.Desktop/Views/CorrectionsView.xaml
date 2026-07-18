@@ -15,6 +15,8 @@
                     <ColumnDefinition Width="16"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="16"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
@@ -25,7 +27,11 @@
                     <TextBlock Text="Reason (required and retained in the audit trail)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                     <TextBox Text="{Binding Reason, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
-                <Button Grid.Column="4" Content="Refresh" Command="{Binding RefreshCommand}" Style="{DynamicResource SecondaryButton}" VerticalAlignment="Bottom"/>
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="Return %" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                    <TextBox Text="{Binding ReturnPercent, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+                <Button Grid.Column="6" Content="Refresh" Command="{Binding RefreshCommand}" Style="{DynamicResource SecondaryButton}" VerticalAlignment="Bottom"/>
             </Grid>
         </Border>
 
@@ -98,8 +104,10 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancel Invoice" Command="{Binding CancelInvoiceCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
+                <Button Content="Full Credit Note" Command="{Binding IssueCreditNoteCommand}" Style="{DynamicResource PrimaryButton}" Margin="0,0,8,0"/>
                 <Button Content="Reverse Receipt" Command="{Binding ReverseReceiptCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
                 <Button Content="Cancel Bill" Command="{Binding CancelBillCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,8,0"/>
+                <Button Content="Full Debit Note" Command="{Binding IssueDebitNoteCommand}" Style="{DynamicResource PrimaryButton}" Margin="0,0,8,0"/>
                 <Button Content="Reverse Payment" Command="{Binding ReversePaymentCommand}" Style="{DynamicResource PrimaryButton}"/>
                 <Button Content="Reverse Journal" Command="{Binding ReverseJournalCommand}" Style="{DynamicResource PrimaryButton}" Margin="8,0,0,0"/>
             </StackPanel>

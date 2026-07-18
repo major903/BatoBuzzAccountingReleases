@@ -89,6 +89,9 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
     [ObservableProperty]
     private ObservableCollection<string> _availableSuppliers = new();
 
+    [ObservableProperty]
+    private ObservableCollection<OutstandingDocumentAllocationViewModel> _openBills = new();
+
     public string[] PaymentMethods { get; } = { "Cash", "Cheque", "Bank Transfer", "Mobile Money", "Card" };
 
     public PaymentViewModel(IPurchaseService purchaseService, ITdsService tdsService, ICompanyService companyService, DesktopDataService dataService, DesktopSession session)
@@ -129,7 +132,50 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
         AvailableSuppliers = new ObservableCollection<string>(suppliers.Where(s => s.IsActive).OrderBy(s => s.Name).Select(s => s.Name));
     }
 
-    partial void OnSupplierNameChanged(string value) => MarkDirty();
+    private async Task LoadOpenBillsAsync()
+    {
+        var companyId = _session.CompanyId;
+        if (!companyId.HasValue || string.IsNullOrWhiteSpace(SupplierName))
+        {
+            OpenBills.Clear();
+            return;
+        }
+
+        try
+        {
+            var supplier = (await _dataService.GetSuppliersAsync(companyId.Value))
+                .FirstOrDefault(candidate => string.Equals(
+                    candidate.Name, SupplierName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (supplier == null)
+            {
+                OpenBills.Clear();
+                return;
+            }
+
+            var bills = await _purchaseService.GetBillsAsync(companyId.Value);
+            OpenBills = new ObservableCollection<OutstandingDocumentAllocationViewModel>(bills
+                .Where(bill => bill.SupplierId == supplier.Id && bill.BalanceDue > 0
+                    && bill.Status is not BillStatusDto.Draft and not BillStatusDto.Cancelled)
+                .OrderBy(bill => bill.BillDate)
+                .Select(bill => new OutstandingDocumentAllocationViewModel
+                {
+                    DocumentId = bill.Id,
+                    DocumentNumber = bill.BillNumber,
+                    DocumentDate = bill.BillDate,
+                    BalanceDue = bill.BalanceDue
+                }));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not load outstanding bills: {ex.Message}";
+        }
+    }
+
+    partial void OnSupplierNameChanged(string value)
+    {
+        MarkDirty();
+        _ = LoadOpenBillsAsync();
+    }
 
     partial void OnPaymentDateTextChanged(string value)
     {
@@ -193,8 +239,16 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
             }
             else if (DocumentInput.TryParseDecimal(AmountText, out var amount) && amount >= 0)
             {
-                TdsAmountText = DocumentInput.FormatDecimal(
-                    Math.Round(amount * SelectedTdsRate.RatePercent / 100, 2));
+                if (SelectedTdsRate.RatePercent >= 100)
+                {
+                    TdsAmountText = "";
+                    StatusMessage = "TDS rate must be below 100% when cash paid is greater than zero.";
+                }
+                else
+                {
+                    TdsAmountText = DocumentInput.FormatDecimal(
+                        Math.Round(amount * SelectedTdsRate.RatePercent / (100 - SelectedTdsRate.RatePercent), 2));
+                }
             }
             else
             {
@@ -278,7 +332,8 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
                 supplierName,
                 userId);
 
-            // Allocate cash plus TDS to the oldest outstanding bills. Any remainder is an advance.
+            // Use the amounts entered in the allocation table. If none were entered,
+            // retain the convenient oldest-first behaviour; any remainder is an advance.
             var openBills = (await _purchaseService.GetBillsAsync(companyId))
                 .Where(b => b.SupplierId == supplier.Id
                     && b.BalanceDue > 0
@@ -288,19 +343,43 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
                 .ToList();
 
             var allocations = new List<PaymentAllocationRequest>();
-            var remaining = totalSettled;
-            foreach (var bill in openBills)
+            foreach (var allocation in OpenBills)
             {
-                if (remaining <= 0)
-                    break;
+                if (string.IsNullOrWhiteSpace(allocation.AmountText))
+                    continue;
+                if (!DocumentInput.TryParseDecimal(allocation.AmountText, out var allocationAmount)
+                    || allocationAmount <= 0)
+                    throw new InvalidOperationException($"Enter a positive allocation for {allocation.DocumentNumber} or leave it blank.");
+                if (allocationAmount > allocation.BalanceDue)
+                    throw new InvalidOperationException($"Allocation for {allocation.DocumentNumber} exceeds its balance due.");
 
-                var applied = Math.Min(remaining, bill.BalanceDue);
                 allocations.Add(new PaymentAllocationRequest
                 {
-                    PurchaseBillId = bill.Id,
-                    AmountAllocated = applied
+                    PurchaseBillId = allocation.DocumentId,
+                    AmountAllocated = allocationAmount
                 });
-                remaining -= applied;
+            }
+
+            var remaining = totalSettled - allocations.Sum(allocation => allocation.AmountAllocated);
+            if (remaining < 0)
+                throw new InvalidOperationException("Selected bill allocations exceed the total settlement amount.");
+
+            if (allocations.Count == 0)
+            {
+                remaining = totalSettled;
+                foreach (var bill in openBills)
+                {
+                    if (remaining <= 0)
+                        break;
+
+                    var applied = Math.Min(remaining, bill.BalanceDue);
+                    allocations.Add(new PaymentAllocationRequest
+                    {
+                        PurchaseBillId = bill.Id,
+                        AmountAllocated = applied
+                    });
+                    remaining -= applied;
+                }
             }
 
             var payment = await _purchaseService.RecordPaymentAsync(new CreatePaymentRequest
@@ -440,6 +519,7 @@ public partial class PaymentViewModel : ObservableObject, IWorkspaceDocumentStat
         BankName = "";
         Reference = "";
         Narration = "";
+        OpenBills.Clear();
         IsDocumentEditable = true;
         CanPrint = false;
         StatusMessage = "Ready for a new payment.";

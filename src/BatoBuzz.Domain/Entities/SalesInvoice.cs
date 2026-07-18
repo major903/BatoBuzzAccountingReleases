@@ -22,6 +22,7 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
     public decimal VatAmount { get; private set; }
     public decimal TotalAmount { get; private set; }
     public decimal AmountReceived { get; private set; } = 0;
+    public decimal CreditedAmount { get; private set; } = 0;
     public decimal BalanceDue { get; private set; }
     public InvoiceStatus Status { get; private set; } = InvoiceStatus.Draft;
     public bool IsVatApplicable { get; private set; } = true;
@@ -74,7 +75,7 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
         };
     }
 
-    public void AddLine(Guid? itemId, string description, decimal quantity, decimal rate, decimal discountPercent, decimal taxPercent, Guid? warehouseId = null)
+    public SalesInvoiceLine AddLine(Guid? itemId, string description, decimal quantity, decimal rate, decimal discountPercent, decimal taxPercent, Guid? warehouseId = null)
     {
         if (Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Can only add lines to draft invoices.");
@@ -118,6 +119,45 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
 
         Lines.Add(line);
         RecalculateTotals();
+        return line;
+    }
+
+    public void UpdateDraft(
+        Guid customerId,
+        DateTime invoiceDate,
+        DateTime dueDate,
+        string? reference,
+        string? narration,
+        bool isVatApplicable,
+        decimal vatRate,
+        Guid? branchId,
+        Guid modifiedByUserId)
+    {
+        if (Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be edited.");
+        if (customerId == Guid.Empty)
+            throw new ArgumentException("Customer ID is required.", nameof(customerId));
+        if (dueDate.Date < invoiceDate.Date)
+            throw new ArgumentException("Due date cannot be before invoice date.", nameof(dueDate));
+        if (vatRate < 0 || vatRate > 100)
+            throw new ArgumentOutOfRangeException(nameof(vatRate), "VAT rate must be between 0 and 100.");
+
+        CustomerId = customerId;
+        InvoiceDate = invoiceDate;
+        DueDate = dueDate;
+        Reference = reference;
+        Narration = narration;
+        IsVatApplicable = isVatApplicable;
+        VatRate = vatRate;
+        BranchId = branchId;
+        Lines.Clear();
+        SubTotal = 0;
+        DiscountAmount = 0;
+        TaxableAmount = 0;
+        VatAmount = 0;
+        TotalAmount = 0;
+        BalanceDue = 0;
+        SetModifiedBy(modifiedByUserId);
     }
 
     public void Issue()
@@ -151,7 +191,7 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
             throw new InvalidOperationException("Receipt allocation exceeds the invoice balance due.");
 
         AmountReceived = Money.Round(AmountReceived + amount);
-        BalanceDue = Money.Round(TotalAmount - AmountReceived);
+        BalanceDue = Money.Round(TotalAmount - AmountReceived - CreditedAmount);
 
         if (BalanceDue <= 0)
             Status = InvoiceStatus.Paid;
@@ -167,7 +207,7 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
             throw new InvalidOperationException("Receipt reversal exceeds the amount applied to the invoice.");
 
         AmountReceived = Money.Round(AmountReceived - amount);
-        BalanceDue = Money.Round(TotalAmount - AmountReceived);
+        BalanceDue = Money.Round(TotalAmount - AmountReceived - CreditedAmount);
         if (BalanceDue <= 0)
             Status = InvoiceStatus.Paid;
         else if (AmountReceived > 0)
@@ -178,13 +218,30 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
 
     public void Cancel(Guid cancelledByUserId)
     {
-        if (Status is not (InvoiceStatus.Issued or InvoiceStatus.Overdue))
-            throw new InvalidOperationException("Only an issued or overdue invoice can be cancelled.");
         if (AmountReceived != 0)
             throw new InvalidOperationException("Cannot cancel an invoice with receipts. Reverse receipts first.");
+        if (Status is not (InvoiceStatus.Issued or InvoiceStatus.Overdue))
+            throw new InvalidOperationException("Only an issued or overdue invoice can be cancelled.");
 
         Status = InvoiceStatus.Cancelled;
         SetModifiedBy(cancelledByUserId);
+    }
+
+    public void IssueCreditNote(decimal amount, Guid userId)
+    {
+        if (AmountReceived != 0)
+            throw new InvalidOperationException("Cannot issue a credit note against an invoice with receipts. Reverse receipts first.");
+        if (Status is not (InvoiceStatus.Issued or InvoiceStatus.Overdue))
+            throw new InvalidOperationException("A credit note requires an issued or overdue invoice that has not already been corrected.");
+
+        amount = Money.Round(amount);
+        if (amount <= 0 || amount > BalanceDue)
+            throw new InvalidOperationException("Credit note amount must be positive and cannot exceed the invoice balance due.");
+        CreditedAmount = Money.Round(CreditedAmount + amount);
+        BalanceDue = Money.Round(TotalAmount - AmountReceived - CreditedAmount);
+        if (BalanceDue == 0)
+            Status = InvoiceStatus.CreditNoteIssued;
+        SetModifiedBy(userId);
     }
 
     public void CheckOverdue(DateTime asOfDate)
@@ -203,6 +260,6 @@ public class SalesInvoice : AuditableEntity, IAggregateRoot
         TaxableAmount = Money.Round(Lines.Sum(l => l.NetAmount));
         VatAmount = Money.Round(Lines.Sum(l => l.TaxAmount));
         TotalAmount = Money.Round(Lines.Sum(l => l.LineTotal));
-        BalanceDue = Money.Round(TotalAmount - AmountReceived);
+        BalanceDue = Money.Round(TotalAmount - AmountReceived - CreditedAmount);
     }
 }

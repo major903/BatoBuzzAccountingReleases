@@ -130,6 +130,34 @@ public static class SchemaUpgrader
                 }
             }),
         new(
+            "20260718_005_stock_movement_reversal_links",
+            (connection, transaction) =>
+            {
+                EnsureColumn(connection, transaction, "StockMovements", "JournalEntryId", "TEXT NULL");
+                EnsureColumn(connection, transaction, "StockMovements", "ReversedByStockMovementId", "TEXT NULL");
+                ExecuteNonQuery(connection, transaction, """
+                    UPDATE StockMovements
+                    SET JournalEntryId = (
+                        SELECT j.Id
+                        FROM JournalEntries j
+                        WHERE j.CompanyId = StockMovements.CompanyId
+                          AND j.VoucherType = 12
+                          AND j.EntryDate = StockMovements.MovementDate
+                          AND COALESCE(j.Narration, '') = COALESCE(StockMovements.Narration, '')
+                        ORDER BY j.CreatedAt
+                        LIMIT 1)
+                    WHERE JournalEntryId IS NULL
+                      AND MovementType IN (1, 9, 10)
+                      AND 1 = (
+                          SELECT COUNT(*)
+                          FROM JournalEntries j
+                          WHERE j.CompanyId = StockMovements.CompanyId
+                            AND j.VoucherType = 12
+                            AND j.EntryDate = StockMovements.MovementDate
+                            AND COALESCE(j.Narration, '') = COALESCE(StockMovements.Narration, ''))
+                    """);
+            }),
+        new(
             "20260714_005_add_tds_rates",
             (connection, transaction) =>
             {
@@ -161,6 +189,19 @@ public static class SchemaUpgrader
                         CONSTRAINT "PK_DocumentSequences" PRIMARY KEY ("CompanyId", "SequenceKey")
                     )
                     """);
+            }),
+        new(
+            "20260718_007_account_group_activation",
+            (connection, transaction) =>
+            {
+                EnsureColumn(connection, transaction, "AccountGroups", "IsActive", "INTEGER NOT NULL DEFAULT 1");
+            }),
+        new(
+            "20260718_008_partial_return_tracking",
+            (connection, transaction) =>
+            {
+                EnsureColumn(connection, transaction, "SalesInvoices", "CreditedAmount", "TEXT NOT NULL DEFAULT 0");
+                EnsureColumn(connection, transaction, "PurchaseBills", "DebitedAmount", "TEXT NOT NULL DEFAULT 0");
             })
     ];
 

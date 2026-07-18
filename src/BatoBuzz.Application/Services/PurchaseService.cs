@@ -41,11 +41,61 @@ public class PurchaseService : IPurchaseService
 
             foreach (var line in request.Lines)
             {
-                bill.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                var draftLine = bill.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
                     line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+                await _unitOfWork.PurchaseBills.AddLineAsync(draftLine);
             }
 
             await _unitOfWork.PurchaseBills.AddAsync(bill);
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return MapBillToDto(bill);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
+    public async Task<PurchaseBillDto> UpdateDraftBillAsync(Guid billId, CreatePurchaseBillRequest request, Guid userId)
+    {
+        var bill = await _unitOfWork.PurchaseBills.GetByIdWithDetailsAsync(billId)
+            ?? throw new InvalidOperationException("Purchase bill not found.");
+        if (bill.Status != BillStatus.Draft || bill.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("Only an unposted draft bill can be edited.");
+
+        await ValidateCompanyBranchAsync(bill.CompanyId, request.BranchId);
+        if (request.CompanyId != bill.CompanyId)
+            throw new InvalidOperationException("A draft bill cannot be moved to another company.");
+        _ = await GetSupplierForCompanyAsync(request.CompanyId, request.SupplierId);
+        if (request.Lines.Count == 0)
+            throw new InvalidOperationException("A purchase bill requires at least one line.");
+        await ValidatePurchaseLineReferencesAsync(
+            request.CompanyId,
+            request.Lines.Select(l => (l.ItemId, l.WarehouseId, l.Description)));
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            bill.UpdateDraft(
+                request.SupplierId,
+                request.BillDate,
+                request.DueDate,
+                request.SupplierInvoiceNumber,
+                request.Reference,
+                request.Narration,
+                request.IsVatApplicable,
+                request.VatRate,
+                request.BranchId,
+                userId);
+            foreach (var line in request.Lines)
+            {
+                var draftLine = bill.AddLine(line.ItemId, line.Description, line.Quantity, line.Rate,
+                    line.DiscountPercent, line.TaxPercent, line.WarehouseId);
+                await _unitOfWork.PurchaseBills.AddLineAsync(draftLine);
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
             return MapBillToDto(bill);
@@ -271,6 +321,108 @@ public class PurchaseService : IPurchaseService
         }
     }
 
+    public async Task<OperationalNoteDto> IssueDebitNoteAsync(
+        Guid billId, CorrectPostedDocumentRequest request, Guid userId)
+    {
+        ValidateCorrection(request);
+        var bill = await _unitOfWork.PurchaseBills.GetByIdWithDetailsAsync(billId)
+            ?? throw new InvalidOperationException("Purchase bill not found.");
+        if (request.CorrectionDate.Date < bill.BillDate.Date)
+            throw new InvalidOperationException("Debit-note date cannot be before the bill date.");
+        if (!bill.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("The purchase bill has not been posted and cannot receive a debit note.");
+        if (request.ReturnPercent <= 0 || request.ReturnPercent > 100)
+            throw new InvalidOperationException("Return percent must be greater than zero and no more than 100.");
+        var supplier = await GetSupplierForCompanyAsync(bill.CompanyId, bill.SupplierId);
+        var returnFactor = request.ReturnPercent / 100m;
+        var taxableAmount = Money.Round(bill.TaxableAmount * returnFactor);
+        var vatAmount = Money.Round(bill.VatAmount * returnFactor);
+        var returnAmount = Money.Round(taxableAmount + vatAmount);
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _posting.EnsurePeriodOpenAsync(bill.CompanyId, request.CorrectionDate);
+            bill.IssueDebitNote(returnAmount, userId);
+            supplier.UpdateBalance(-returnAmount);
+            var inventoryCostReturned = await RemoveCancelledBillStockAsync(
+                bill, request.CorrectionDate, request.Reason, "DebitNote", returnFactor);
+            var lines = new List<PostingLine>();
+            if (inventoryCostReturned > 0)
+            {
+                var inventoryLedger = await _posting.GetOrCreateInventoryLedgerAsync(bill.CompanyId);
+                lines.Add(new PostingLine(inventoryLedger.Id, 0, inventoryCostReturned,
+                    $"Inventory returned on debit note for {bill.BillNumber}"));
+            }
+            var nonInventoryCost = Money.Round(taxableAmount - inventoryCostReturned);
+            if (nonInventoryCost < 0)
+                throw new InvalidOperationException("Inventory return value exceeds the purchase bill taxable amount.");
+            if (nonInventoryCost > 0)
+            {
+                var purchaseLedger = await _posting.GetOrCreatePurchaseLedgerAsync(bill.CompanyId);
+                lines.Add(new PostingLine(purchaseLedger.Id, 0, nonInventoryCost,
+                    $"Purchase reversal for debit note {bill.BillNumber}"));
+            }
+            if (vatAmount > 0)
+            {
+                var vatLedger = await _posting.GetOrCreatePurchaseVatLedgerAsync(bill.CompanyId);
+                lines.Add(new PostingLine(vatLedger.Id, 0, vatAmount,
+                    $"VAT reversal for debit note {bill.BillNumber}", bill.VatRate, "INPUT-VAT"));
+            }
+            lines.Add(new PostingLine(supplier.LedgerId, returnAmount, 0,
+                $"Debit note for {bill.BillNumber}"));
+
+            var noteNumber = await _unitOfWork.PurchaseBills.GetNextDebitNoteNumberAsync(bill.CompanyId);
+            var journal = await _posting.CreateAndPostJournalAsync(
+                bill.CompanyId, request.CorrectionDate, VoucherType.DebitNote, userId, noteNumber,
+                $"Debit note {noteNumber} for {bill.BillNumber}: {request.Reason.Trim()}", bill.BranchId, lines);
+            var auditUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            await _unitOfWork.AuditLogs.AddAsync(AuditLog.Create(
+                "PurchaseBill.DebitNoteIssued", nameof(PurchaseBill), bill.Id, bill.CompanyId,
+                userId, userName: auditUser?.UserName ?? userId.ToString(), newValues: noteNumber));
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+            return new OperationalNoteDto
+            {
+                JournalEntryId = journal.Id,
+                NoteNumber = noteNumber,
+                NoteDate = request.CorrectionDate.Date,
+                Amount = returnAmount,
+                SourceDocumentNumber = bill.BillNumber
+            };
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
+    public async Task DeleteDraftBillAsync(Guid billId, Guid userId)
+    {
+        var bill = await _unitOfWork.PurchaseBills.GetByIdWithDetailsAsync(billId)
+            ?? throw new InvalidOperationException("Purchase bill not found.");
+        if (bill.Status != BillStatus.Draft || bill.PostedJournalEntryId.HasValue)
+            throw new InvalidOperationException("Only an unposted draft bill can be discarded.");
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var auditUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            await _unitOfWork.PurchaseBills.DeleteAsync(bill);
+            await _unitOfWork.AuditLogs.AddAsync(AuditLog.Create(
+                "PurchaseBill.DraftDiscarded", nameof(PurchaseBill), bill.Id, bill.CompanyId,
+                userId, userName: auditUser?.UserName ?? userId.ToString(), newValues: bill.BillNumber));
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
     public async Task<PaymentDto> ReversePaymentAsync(
         Guid paymentId, CorrectPostedDocumentRequest request, Guid userId)
     {
@@ -389,9 +541,16 @@ public class PurchaseService : IPurchaseService
         Id = bill.Id,
         BillNumber = bill.BillNumber,
         BillDate = bill.BillDate,
+        DueDate = bill.DueDate,
         SupplierId = bill.SupplierId,
         SupplierName = bill.Supplier?.Name ?? string.Empty,
+        SupplierInvoiceNumber = bill.SupplierInvoiceNumber,
+        Reference = bill.Reference,
+        Narration = bill.Narration,
+        IsVatApplicable = bill.IsVatApplicable,
+        VatRate = bill.VatRate,
         SubTotal = bill.SubTotal,
+        DiscountAmount = bill.DiscountAmount,
         VatAmount = bill.VatAmount,
         TotalAmount = bill.TotalAmount,
         AmountPaid = bill.AmountPaid,
@@ -399,7 +558,21 @@ public class PurchaseService : IPurchaseService
         Status = (BillStatusDto)bill.Status,
         PostedJournalEntryId = bill.PostedJournalEntryId,
         CorrectionDate = bill.PostedJournalEntry?.ReversalJournalEntry?.EntryDate,
-        CorrectionReason = bill.PostedJournalEntry?.ReversalReason
+        CorrectionReason = bill.PostedJournalEntry?.ReversalReason,
+        Lines = bill.Lines.Select(l => new PurchaseBillLineDto
+        {
+            Id = l.Id,
+            ItemId = l.ItemId,
+            WarehouseId = l.WarehouseId,
+            Description = l.Description,
+            Quantity = l.Quantity,
+            Rate = l.Rate,
+            DiscountPercent = l.DiscountPercent,
+            TaxPercent = l.TaxPercent,
+            DiscountAmount = l.DiscountAmount,
+            TaxAmount = l.TaxAmount,
+            LineTotal = l.LineTotal
+        }).ToList()
     };
 
     private static PaymentDto MapPaymentToDto(Payment p, string supplierName) => new()
@@ -541,9 +714,10 @@ public class PurchaseService : IPurchaseService
         return totalInventoryCost;
     }
 
-    private async Task RemoveCancelledBillStockAsync(
-        PurchaseBill bill, DateTime correctionDate, string reason)
+    private async Task<decimal> RemoveCancelledBillStockAsync(
+        PurchaseBill bill, DateTime correctionDate, string reason, string sourceDocumentType = "PurchaseBillCancellation", decimal returnFactor = 1m)
     {
+        decimal totalCostReturned = 0;
         var movements = await _unitOfWork.StockMovements.GetBySourceDocumentAsync(
             bill.CompanyId, bill.Id, "PurchaseBill");
         foreach (var movement in movements.Where(m => m.MovementType == MovementType.PurchaseIn))
@@ -553,23 +727,29 @@ public class PurchaseService : IPurchaseService
             var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(
                 movement.ItemId, movement.WarehouseId)
                 ?? throw new InvalidOperationException("The stock balance needed to cancel this bill was not found.");
-            balance.RemoveStockAtValue(movement.Quantity, movement.TotalCost);
+            var quantity = Money.Round(movement.Quantity * returnFactor);
+            var totalCost = Money.Round(movement.TotalCost * returnFactor);
+            if (quantity <= 0)
+                continue;
+            balance.RemoveStockAtValue(quantity, totalCost);
             var returnMovement = StockMovement.Create(
                 bill.CompanyId,
                 movement.ItemId,
                 movement.WarehouseId,
                 MovementType.PurchaseReturn,
-                movement.Quantity,
-                movement.Quantity == 0 ? 0 : movement.TotalCost / movement.Quantity,
+                quantity,
+                quantity == 0 ? 0 : totalCost / quantity,
                 balance.Quantity,
                 balance.TotalValue,
                 correctionDate,
                 bill.Id,
-                "PurchaseBillCancellation",
-                narration: $"Cancellation of {bill.BillNumber}: {reason.Trim()}",
-                totalCostOverride: movement.TotalCost);
+                sourceDocumentType,
+                narration: $"{(sourceDocumentType == "DebitNote" ? "Debit note" : "Cancellation")} of {bill.BillNumber}: {reason.Trim()}",
+                totalCostOverride: totalCost);
             await _unitOfWork.StockMovements.AddAsync(returnMovement);
+            totalCostReturned = Money.Round(totalCostReturned + totalCost);
         }
+        return totalCostReturned;
     }
 
     private async Task<Guid> GetDefaultWarehouseIdAsync(Guid companyId)

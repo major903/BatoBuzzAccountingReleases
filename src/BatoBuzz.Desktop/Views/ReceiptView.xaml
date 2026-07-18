@@ -57,6 +57,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" IsEnabled="{Binding CanEditDocument}">
@@ -110,7 +111,22 @@
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="2" Margin="0,0,0,16" IsEnabled="{Binding CanEditDocument}">
+                    <Expander Grid.Row="2" Header="Allocate to specific invoices (optional)" IsEnabled="{Binding CanEditDocument}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Enter amounts only for the invoices this receipt should settle. Leaving every amount blank applies oldest invoices first."
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,6"/>
+                            <DataGrid ItemsSource="{Binding OpenInvoices}" AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="180">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Invoice" Binding="{Binding DocumentNumber}" Width="*" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding DocumentDate, StringFormat=d}" Width="120" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding BalanceDue, StringFormat='Rs. {0:N2}'}" Width="150" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Apply" Binding="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Expander>
+
+                    <StackPanel Grid.Row="3" Margin="0,0,0,16" IsEnabled="{Binding CanEditDocument}">
                         <TextBlock Text="Narration" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                         <TextBox Text="{Binding Narration}"
                                  Height="72"
@@ -119,7 +135,7 @@
                                  VerticalScrollBarVisibility="Auto"/>
                     </StackPanel>
 
-                    <Border Grid.Row="3"
+                    <Border Grid.Row="4"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1,0,0,0"
                             Padding="0,14,0,0">

@@ -55,6 +55,31 @@ public class InventoryService : IInventoryService
         return MapItemToDto(item);
     }
 
+    public async Task<ItemDto> UpdateItemAsync(
+        Guid itemId, string name, string? code, decimal standardCost, decimal salePrice,
+        decimal? reorderLevel, bool isActive, Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Item name is required.");
+        if (standardCost < 0 || salePrice < 0 || reorderLevel is < 0)
+            throw new InvalidOperationException("Item cost, sale price, and reorder level cannot be negative.");
+
+        var item = await _unitOfWork.Items.GetByIdWithDetailsAsync(itemId)
+            ?? throw new InvalidOperationException("Item not found.");
+        var items = await _unitOfWork.Items.GetByCompanyAsync(item.CompanyId, activeOnly: false);
+        if (items.Any(candidate => candidate.Id != item.Id
+            && string.Equals(candidate.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Item '{name.Trim()}' already exists.");
+        if (!string.IsNullOrWhiteSpace(code) && items.Any(candidate => candidate.Id != item.Id
+            && string.Equals(candidate.Code, code.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Item code '{code.Trim()}' already exists.");
+
+        item.UpdateDetails(name, code, standardCost, salePrice, reorderLevel, isActive);
+        item.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+        return MapItemToDto(item);
+    }
+
     public async Task RecordStockMovementAsync(CreateStockMovementRequest request, Guid userId)
     {
         if (request.MovementDate == default)
@@ -139,7 +164,11 @@ public class InventoryService : IInventoryService
 
             await _unitOfWork.StockMovements.AddAsync(movement);
             await _unitOfWork.SaveChangesAsync();
-            await PostStockMovementJournalAsync(request.CompanyId, movementDate, movementType, request.Quantity * unitCost, request.Narration, userId);
+            var movementJournal = await PostStockMovementJournalAsync(
+                request.CompanyId, movementDate, movementType, request.Quantity * unitCost, request.Narration, userId);
+            if (movementJournal != null)
+                movement.AttachPostedJournal(movementJournal.Id);
+            await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
         catch
@@ -195,13 +224,16 @@ public class InventoryService : IInventoryService
 
             await _unitOfWork.StockMovements.AddAsync(movement);
             await _unitOfWork.SaveChangesAsync();
-            await PostStockAdjustmentJournalAsync(
+            var adjustmentJournal = await PostStockAdjustmentJournalAsync(
                 request.CompanyId,
                 adjustmentDate,
                 previousValue,
                 balance.TotalValue,
                 $"Stock adjustment: {request.Reason}. {request.Narration}",
                 userId);
+            if (adjustmentJournal != null)
+                movement.AttachPostedJournal(adjustmentJournal.Id);
+            await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
         }
         catch
@@ -260,6 +292,94 @@ public class InventoryService : IInventoryService
         return items.Select(MapItemToDto).ToList();
     }
 
+    public async Task<IReadOnlyList<StockMovementDto>> GetStockMovementsAsync(Guid companyId)
+    {
+        var movements = await _unitOfWork.StockMovements.FindAsync(movement => movement.CompanyId == companyId);
+        var items = await _unitOfWork.Items.GetByCompanyAsync(companyId, activeOnly: false);
+        var warehouses = await _unitOfWork.Warehouses.GetByCompanyAsync(companyId);
+
+        return movements.OrderByDescending(movement => movement.MovementDate).ThenByDescending(movement => movement.CreatedAt)
+            .Select(movement => new StockMovementDto
+            {
+                Id = movement.Id,
+                ItemName = items.FirstOrDefault(item => item.Id == movement.ItemId)?.Name ?? "Unknown item",
+                WarehouseName = warehouses.FirstOrDefault(warehouse => warehouse.Id == movement.WarehouseId)?.Name ?? "Unknown warehouse",
+                MovementType = (int)movement.MovementType,
+                Quantity = movement.Quantity,
+                UnitCost = movement.UnitCost,
+                TotalCost = movement.TotalCost,
+                MovementDate = movement.MovementDate,
+                Narration = movement.Narration,
+                IsReversed = movement.ReversedByStockMovementId.HasValue,
+                CanReverse = movement.MovementType is MovementType.OpeningStock or MovementType.Damage or MovementType.WriteOff
+                    && !movement.ReversedByStockMovementId.HasValue
+                    && movement.JournalEntryId.HasValue
+            }).ToList();
+    }
+
+    public async Task ReverseStockMovementAsync(Guid stockMovementId, CorrectPostedDocumentRequest request, Guid userId)
+    {
+        ValidateCorrection(request);
+        var movement = await _unitOfWork.StockMovements.GetByIdAsync(stockMovementId)
+            ?? throw new InvalidOperationException("Stock movement not found.");
+        if (movement.MovementType is not (MovementType.OpeningStock or MovementType.Damage or MovementType.WriteOff))
+            throw new InvalidOperationException("Only standalone opening stock, damage, and write-off movements can be reversed here.");
+        if (movement.ReversedByStockMovementId.HasValue)
+            throw new InvalidOperationException("This stock movement has already been reversed.");
+        if (!movement.JournalEntryId.HasValue)
+            throw new InvalidOperationException("This stock movement predates journal linking and cannot be reversed safely from the application.");
+        if (request.CorrectionDate.Date < movement.MovementDate.Date)
+            throw new InvalidOperationException("Correction date cannot be before the stock movement date.");
+
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _posting.EnsurePeriodOpenAsync(movement.CompanyId, request.CorrectionDate);
+            await _posting.EnsureStockDateIsNotBackdatedAsync(
+                movement.ItemId, movement.WarehouseId, request.CorrectionDate, "reverse this stock movement");
+            var balance = await _unitOfWork.StockBalances.GetByItemWarehouseAsync(movement.ItemId, movement.WarehouseId)
+                ?? throw new InvalidOperationException("The stock balance needed for reversal was not found.");
+
+            if (movement.MovementType == MovementType.OpeningStock)
+                balance.RemoveStockAtValue(movement.Quantity, movement.TotalCost);
+            else
+                balance.AddStockAtValue(movement.Quantity, movement.TotalCost);
+
+            var reversal = StockMovement.Create(
+                movement.CompanyId,
+                movement.ItemId,
+                movement.WarehouseId,
+                MovementType.StockReversal,
+                movement.Quantity,
+                movement.Quantity == 0 ? 0 : movement.TotalCost / movement.Quantity,
+                balance.Quantity,
+                balance.TotalValue,
+                request.CorrectionDate,
+                movement.Id,
+                "StockMovementReversal",
+                narration: $"Reversal of stock movement: {request.Reason.Trim()}",
+                totalCostOverride: movement.TotalCost);
+            await _unitOfWork.StockMovements.AddAsync(reversal);
+            movement.MarkReversed(reversal.Id, userId);
+
+            var journal = await _unitOfWork.JournalEntries.GetByIdWithLinesAsync(movement.JournalEntryId.Value)
+                ?? throw new InvalidOperationException("The linked stock journal was not found.");
+            await _posting.ReversePostedJournalWithinCurrentTransactionAsync(
+                journal, request.CorrectionDate, request.Reason, userId);
+            var auditUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            await _unitOfWork.AuditLogs.AddAsync(AuditLog.Create(
+                "StockMovement.Reversed", nameof(StockMovement), movement.Id, movement.CompanyId,
+                userId, userName: auditUser?.UserName ?? userId.ToString(), newValues: request.Reason.Trim()));
+            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
+    }
+
     private static ItemDto MapItemToDto(Item item) => new()
     {
         Id = item.Id,
@@ -286,10 +406,10 @@ public class InventoryService : IInventoryService
             throw new InvalidOperationException("Warehouse does not belong to the selected company or is inactive.");
     }
 
-    private async Task PostStockMovementJournalAsync(Guid companyId, DateTime movementDate, MovementType movementType, decimal amount, string? narration, Guid userId)
+    private async Task<JournalEntry?> PostStockMovementJournalAsync(Guid companyId, DateTime movementDate, MovementType movementType, decimal amount, string? narration, Guid userId)
     {
         if (amount <= 0 || movementType is MovementType.StockTransferIn or MovementType.StockTransferOut)
-            return;
+            return null;
 
         var inventoryLedger = await _posting.GetOrCreateInventoryLedgerAsync(companyId);
         var entryNarration = narration ?? $"Stock movement: {movementType}";
@@ -332,7 +452,7 @@ public class InventoryService : IInventoryService
 
         if (lines.Count > 0)
         {
-            await _posting.CreateAndPostJournalAsync(
+            return await _posting.CreateAndPostJournalAsync(
                 companyId,
                 movementDate,
                 VoucherType.StockJournal,
@@ -342,13 +462,15 @@ public class InventoryService : IInventoryService
                 null,
                 lines);
         }
+
+        return null;
     }
 
-    private async Task PostStockAdjustmentJournalAsync(Guid companyId, DateTime adjustmentDate, decimal previousValue, decimal adjustedValue, string narration, Guid userId)
+    private async Task<JournalEntry?> PostStockAdjustmentJournalAsync(Guid companyId, DateTime adjustmentDate, decimal previousValue, decimal adjustedValue, string narration, Guid userId)
     {
         var difference = adjustedValue - previousValue;
         if (difference == 0)
-            return;
+            return null;
 
         var inventoryLedger = await _posting.GetOrCreateInventoryLedgerAsync(companyId);
         var adjustmentLedger = await _posting.GetOrCreateStockAdjustmentLedgerAsync(companyId);
@@ -366,7 +488,7 @@ public class InventoryService : IInventoryService
                 new PostingLine(inventoryLedger.Id, 0, amount, narration)
             };
 
-        await _posting.CreateAndPostJournalAsync(
+        return await _posting.CreateAndPostJournalAsync(
             companyId,
             adjustmentDate,
             VoucherType.StockJournal,
@@ -375,5 +497,16 @@ public class InventoryService : IInventoryService
             narration,
             null,
             lines);
+    }
+
+    private static void ValidateCorrection(CorrectPostedDocumentRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.CorrectionDate == default)
+            throw new InvalidOperationException("Correction date is required.");
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            throw new InvalidOperationException("A correction reason is required.");
+        if (request.Reason.Trim().Length > 500)
+            throw new InvalidOperationException("Correction reason cannot exceed 500 characters.");
     }
 }

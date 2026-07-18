@@ -118,3 +118,18 @@ public class InventoryReportDto
     public decimal? ReorderLevel { get; set; }
     public bool IsLowStock { get; set; }
 }
+
+public class StockMovementDto
+{
+    public Guid Id { get; set; }
+    public string ItemName { get; set; } = null!;
+    public string WarehouseName { get; set; } = null!;
+    public int MovementType { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal TotalCost { get; set; }
+    public DateTime MovementDate { get; set; }
+    public string? Narration { get; set; }
+    public bool IsReversed { get; set; }
+    public bool CanReverse { get; set; }
+}

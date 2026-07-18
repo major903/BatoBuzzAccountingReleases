@@ -6,6 +6,7 @@ namespace BatoBuzz.Application.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     ICompanyRepository Companies { get; }
+    IAccountGroupRepository AccountGroups { get; }
     ILedgerRepository Ledgers { get; }
     IJournalEntryRepository JournalEntries { get; }
     ICustomerRepository Customers { get; }
@@ -17,6 +18,7 @@ public interface IUnitOfWork : IDisposable
     IItemRepository Items { get; }
     IStockBalanceRepository StockBalances { get; }
     IUnitRepository Units { get; }
+    IItemCategoryRepository ItemCategories { get; }
     IWarehouseRepository Warehouses { get; }
     IStockMovementRepository StockMovements { get; }
     IUserRepository Users { get; }

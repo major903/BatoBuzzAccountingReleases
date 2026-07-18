@@ -18,8 +18,8 @@ public class TdsService : ITdsService
     {
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new InvalidOperationException("Rate name is required.");
-        if (request.RatePercent < 0 || request.RatePercent > 100)
-            throw new InvalidOperationException("Rate percent must be between 0 and 100.");
+        if (request.RatePercent < 0 || request.RatePercent >= 100)
+            throw new InvalidOperationException("Rate percent must be between 0 and less than 100.");
 
         var rate = TdsRate.Create(request.CompanyId, request.Name.Trim(), request.RatePercent, request.Description?.Trim());
         rate.SetCreatedBy(userId);
@@ -35,8 +35,8 @@ public class TdsService : ITdsService
         var rate = await _unitOfWork.TdsRates.GetByIdAsync(rateId)
             ?? throw new InvalidOperationException("TDS rate not found.");
 
-        if (ratePercent < 0 || ratePercent > 100)
-            throw new InvalidOperationException("Rate percent must be between 0 and 100.");
+        if (ratePercent < 0 || ratePercent >= 100)
+            throw new InvalidOperationException("Rate percent must be between 0 and less than 100.");
 
         rate.Update(name.Trim(), ratePercent, description?.Trim(), isActive);
         await _unitOfWork.SaveChangesAsync();

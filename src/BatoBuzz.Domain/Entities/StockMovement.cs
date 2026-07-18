@@ -23,6 +23,8 @@ public class StockMovement : AuditableEntity
     public string? BatchNumber { get; private set; }
     public DateTime? ExpiryDate { get; private set; }
     public string? Narration { get; private set; }
+    public Guid? JournalEntryId { get; private set; }
+    public Guid? ReversedByStockMovementId { get; private set; }
 
     // Navigation
     public Item Item { get; private set; } = null!;
@@ -74,5 +76,24 @@ public class StockMovement : AuditableEntity
             ExpiryDate = expiryDate,
             Narration = narration
         };
+    }
+
+    public void AttachPostedJournal(Guid journalEntryId)
+    {
+        if (journalEntryId == Guid.Empty)
+            throw new ArgumentException("Posted journal entry ID is required.", nameof(journalEntryId));
+        if (JournalEntryId.HasValue && JournalEntryId != journalEntryId)
+            throw new InvalidOperationException("The stock movement is already linked to another posted journal.");
+        JournalEntryId = journalEntryId;
+    }
+
+    public void MarkReversed(Guid reversalStockMovementId, Guid modifiedByUserId)
+    {
+        if (reversalStockMovementId == Guid.Empty)
+            throw new ArgumentException("Reversal stock movement ID is required.", nameof(reversalStockMovementId));
+        if (ReversedByStockMovementId.HasValue)
+            throw new InvalidOperationException("This stock movement has already been reversed.");
+        ReversedByStockMovementId = reversalStockMovementId;
+        SetModifiedBy(modifiedByUserId);
     }
 }

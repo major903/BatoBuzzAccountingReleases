@@ -14,5 +14,6 @@ public enum MovementType
     StockTransferIn = 7,
     StockTransferOut = 8,
     Damage = 9,
-    WriteOff = 10
+    WriteOff = 10,
+    StockReversal = 11
 }

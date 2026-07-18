@@ -49,11 +49,21 @@
                     <TextBlock Text="Sale Price" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Text="{Binding SalePrice}"/>
                 </StackPanel>
-                <Button Grid.Row="0" Grid.Column="8" Content="Save Item" Command="{Binding SaveItemCommand}" Style="{DynamicResource PrimaryButton}" VerticalAlignment="Bottom"/>
+                <StackPanel Grid.Row="0" Grid.Column="8" VerticalAlignment="Bottom">
+                    <Button Content="Save / Update Item" Command="{Binding SaveItemCommand}" Style="{DynamicResource PrimaryButton}"/>
+                </StackPanel>
 
                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,0,0">
                     <TextBlock Text="Reorder Level (optional)" Style="{DynamicResource FieldLabel}"/>
                     <TextBox Text="{Binding ReorderLevel}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,8,0,0">
+                    <TextBlock Text="Unit" Style="{DynamicResource FieldLabel}"/>
+                    <ComboBox ItemsSource="{Binding Units}" SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Name"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Margin="0,8,0,0">
+                    <TextBlock Text="Category (optional)" Style="{DynamicResource FieldLabel}"/>
+                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="Name"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -95,6 +105,8 @@
                     <TextBox Text="{Binding UnitCost}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="8">
+                    <TextBlock Text="Warehouse" Style="{DynamicResource FieldLabel}"/>
+                    <ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Width="130"/>
                     <TextBlock Text="Activity Date" Style="{DynamicResource FieldLabel}"/>
                     <DatePicker SelectedDate="{Binding MovementDate}" Width="130"/>
                 </StackPanel>
@@ -114,16 +126,93 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <Expander Grid.Row="0" Header="Posted standalone movements and reversals" Margin="0,0,0,8">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Correction Date" Style="{DynamicResource FieldLabel}"/>
+                            <DatePicker SelectedDate="{Binding CorrectionDate}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Reason (required)" Style="{DynamicResource FieldLabel}"/>
+                            <TextBox Text="{Binding CorrectionReason}"/>
+                        </StackPanel>
+                        <Button Grid.Column="6" Content="Reverse Selected" Command="{Binding ReverseSelectedMovementCommand}" Style="{DynamicResource SecondaryButton}" VerticalAlignment="Bottom"/>
+                    </Grid>
+                    <DataGrid ItemsSource="{Binding StockMovements}" SelectedItem="{Binding SelectedStockMovement}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="190">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Date" Binding="{Binding MovementDate, StringFormat=d}" Width="100"/>
+                            <DataGridTextColumn Header="Item" Binding="{Binding ItemName}" Width="*"/>
+                            <DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="*"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110"/>
+                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat=N2}" Width="90"/>
+                            <DataGridTextColumn Header="Value" Binding="{Binding TotalCost, StringFormat='Rs. {0:N2}'}" Width="110"/>
+                            <DataGridCheckBoxColumn Header="Reversed" Binding="{Binding IsReversed}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Can Reverse" Binding="{Binding CanReverse}" Width="90"/>
+                            <DataGridTextColumn Header="Narration" Binding="{Binding Narration}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Expander>
+            <Expander Grid.Row="1" Header="Inventory master setup" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Unit (select above to deactivate)" Style="{DynamicResource FieldLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Text="{Binding NewUnitName}" Width="180" Margin="0,0,8,0"/>
+                            <Button Content="Save Unit" Command="{Binding AddUnitCommand}" Style="{DynamicResource SecondaryButton}"/>
+                            <Button Content="Deactivate Selected" Command="{Binding DeactivateSelectedUnitCommand}" Style="{DynamicResource SecondaryButton}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Warehouse (select above to deactivate)" Style="{DynamicResource FieldLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Text="{Binding NewWarehouseName}" Width="180" Margin="0,0,8,0"/>
+                            <Button Content="Save Warehouse" Command="{Binding AddWarehouseCommand}" Style="{DynamicResource SecondaryButton}"/>
+                            <Button Content="Deactivate Selected" Command="{Binding DeactivateSelectedWarehouseCommand}" Style="{DynamicResource SecondaryButton}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Category (select above to deactivate)" Style="{DynamicResource FieldLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Text="{Binding NewCategoryName}" Width="180" Margin="0,0,8,0"/>
+                            <Button Content="Save Category" Command="{Binding AddCategoryCommand}" Style="{DynamicResource SecondaryButton}"/>
+                            <Button Content="Deactivate Selected" Command="{Binding DeactivateSelectedCategoryCommand}" Style="{DynamicResource SecondaryButton}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Expander>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
                 <TextBox Text="{Binding SearchText}" Width="260" Margin="0,0,8,0" ToolTip="Search by item name"/>
                 <Button Content="Search" Command="{Binding SearchCommand}" Style="{DynamicResource SecondaryButton}"/>
+                <Button Content="Deactivate Selected Item" Command="{Binding DeactivateSelectedItemCommand}" Style="{DynamicResource SecondaryButton}" Margin="8,0,0,0"/>
             </StackPanel>
-            <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-            <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True">
+            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+            <DataGrid Grid.Row="5" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" AutoGenerateColumns="False" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Item" Binding="{Binding Name}" Width="2*"/>
+                    <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="100"/>
                     <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="*"/>
                     <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat=N2}" Width="*"/>
                     <DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat='Rs. {0:N2}'}" Width="*"/>

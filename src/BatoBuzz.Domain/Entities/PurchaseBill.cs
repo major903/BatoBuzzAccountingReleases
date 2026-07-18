@@ -23,6 +23,7 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
     public decimal VatAmount { get; private set; }
     public decimal TotalAmount { get; private set; }
     public decimal AmountPaid { get; private set; } = 0;
+    public decimal DebitedAmount { get; private set; } = 0;
     public decimal BalanceDue { get; private set; }
     public BillStatus Status { get; private set; } = BillStatus.Draft;
     public bool IsVatApplicable { get; private set; } = true;
@@ -77,7 +78,7 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
         };
     }
 
-    public void AddLine(Guid? itemId, string description, decimal quantity, decimal rate, decimal discountPercent, decimal taxPercent, Guid? warehouseId = null)
+    public PurchaseBillLine AddLine(Guid? itemId, string description, decimal quantity, decimal rate, decimal discountPercent, decimal taxPercent, Guid? warehouseId = null)
     {
         if (Status != BillStatus.Draft)
             throw new InvalidOperationException("Can only add lines to draft bills.");
@@ -102,7 +103,7 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
         var taxAmount = IsVatApplicable ? Money.Round(netAmount * taxPercent / 100) : 0;
         var lineTotal = Money.Round(netAmount + taxAmount);
 
-        Lines.Add(new PurchaseBillLine
+        var line = new PurchaseBillLine
         {
             CompanyId = CompanyId,
             PurchaseBillId = Id,
@@ -117,9 +118,51 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
             TaxAmount = taxAmount,
             LineTotal = lineTotal,
             WarehouseId = warehouseId
-        });
+        };
+        Lines.Add(line);
 
         RecalculateTotals();
+        return line;
+    }
+
+    public void UpdateDraft(
+        Guid supplierId,
+        DateTime billDate,
+        DateTime dueDate,
+        string? supplierInvoiceNumber,
+        string? reference,
+        string? narration,
+        bool isVatApplicable,
+        decimal vatRate,
+        Guid? branchId,
+        Guid modifiedByUserId)
+    {
+        if (Status != BillStatus.Draft)
+            throw new InvalidOperationException("Only draft bills can be edited.");
+        if (supplierId == Guid.Empty)
+            throw new ArgumentException("Supplier ID is required.", nameof(supplierId));
+        if (dueDate.Date < billDate.Date)
+            throw new ArgumentException("Due date cannot be before bill date.", nameof(dueDate));
+        if (vatRate < 0 || vatRate > 100)
+            throw new ArgumentOutOfRangeException(nameof(vatRate), "VAT rate must be between 0 and 100.");
+
+        SupplierId = supplierId;
+        BillDate = billDate;
+        DueDate = dueDate;
+        SupplierInvoiceNumber = supplierInvoiceNumber;
+        Reference = reference;
+        Narration = narration;
+        IsVatApplicable = isVatApplicable;
+        VatRate = vatRate;
+        BranchId = branchId;
+        Lines.Clear();
+        SubTotal = 0;
+        DiscountAmount = 0;
+        TaxableAmount = 0;
+        VatAmount = 0;
+        TotalAmount = 0;
+        BalanceDue = 0;
+        SetModifiedBy(modifiedByUserId);
     }
 
     public void Receive()
@@ -152,7 +195,7 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
             throw new InvalidOperationException("Payment allocation exceeds the bill balance due.");
 
         AmountPaid = Money.Round(AmountPaid + amount);
-        BalanceDue = Money.Round(TotalAmount - AmountPaid);
+        BalanceDue = Money.Round(TotalAmount - AmountPaid - DebitedAmount);
 
         if (BalanceDue <= 0)
             Status = BillStatus.Paid;
@@ -168,7 +211,7 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
             throw new InvalidOperationException("Payment reversal exceeds the amount applied to the bill.");
 
         AmountPaid = Money.Round(AmountPaid - amount);
-        BalanceDue = Money.Round(TotalAmount - AmountPaid);
+        BalanceDue = Money.Round(TotalAmount - AmountPaid - DebitedAmount);
         if (BalanceDue <= 0)
             Status = BillStatus.Paid;
         else if (AmountPaid > 0)
@@ -179,13 +222,30 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
 
     public void Cancel(Guid cancelledByUserId)
     {
-        if (Status is not (BillStatus.Received or BillStatus.Overdue))
-            throw new InvalidOperationException("Only a received or overdue bill can be cancelled.");
         if (AmountPaid != 0)
             throw new InvalidOperationException("Cannot cancel a bill with payments. Reverse payments first.");
+        if (Status is not (BillStatus.Received or BillStatus.Overdue))
+            throw new InvalidOperationException("Only a received or overdue bill can be cancelled.");
 
         Status = BillStatus.Cancelled;
         SetModifiedBy(cancelledByUserId);
+    }
+
+    public void IssueDebitNote(decimal amount, Guid userId)
+    {
+        if (AmountPaid != 0)
+            throw new InvalidOperationException("Cannot issue a debit note against a bill with payments. Reverse payments first.");
+        if (Status is not (BillStatus.Received or BillStatus.Overdue))
+            throw new InvalidOperationException("A debit note requires a received or overdue bill that has not already been corrected.");
+
+        amount = Money.Round(amount);
+        if (amount <= 0 || amount > BalanceDue)
+            throw new InvalidOperationException("Debit note amount must be positive and cannot exceed the purchase bill balance due.");
+        DebitedAmount = Money.Round(DebitedAmount + amount);
+        BalanceDue = Money.Round(TotalAmount - AmountPaid - DebitedAmount);
+        if (BalanceDue == 0)
+            Status = BillStatus.DebitNoteIssued;
+        SetModifiedBy(userId);
     }
 
     private void RecalculateTotals()
@@ -195,6 +255,6 @@ public class PurchaseBill : AuditableEntity, IAggregateRoot
         TaxableAmount = Money.Round(Lines.Sum(l => l.NetAmount));
         VatAmount = Money.Round(Lines.Sum(l => l.TaxAmount));
         TotalAmount = Money.Round(Lines.Sum(l => l.LineTotal));
-        BalanceDue = Money.Round(TotalAmount - AmountPaid);
+        BalanceDue = Money.Round(TotalAmount - AmountPaid - DebitedAmount);
     }
 }

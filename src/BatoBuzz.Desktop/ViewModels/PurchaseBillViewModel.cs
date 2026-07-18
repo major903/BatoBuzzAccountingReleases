@@ -77,6 +77,12 @@ public partial class PurchaseBillViewModel : ObservableObject
     private ObservableCollection<string> _availableSuppliers = new();
 
     [ObservableProperty]
+    private ObservableCollection<PurchaseBillDto> _draftBills = new();
+
+    [ObservableProperty]
+    private PurchaseBillDto? _selectedDraft;
+
+    [ObservableProperty]
     private string _statusMessage = "";
 
     [ObservableProperty]
@@ -114,6 +120,12 @@ public partial class PurchaseBillViewModel : ObservableObject
 
         var suppliers = await _dataService.GetSuppliersAsync(_session.CompanyId.Value);
         AvailableSuppliers = new ObservableCollection<string>(suppliers.Where(s => s.IsActive).OrderBy(s => s.Name).Select(s => s.Name));
+
+        var bills = await _purchaseService.GetBillsAsync(_session.CompanyId.Value);
+        DraftBills = new ObservableCollection<PurchaseBillDto>(
+            bills.Where(bill => bill.Status == BatoBuzz.Contracts.Common.BillStatusDto.Draft)
+                .OrderByDescending(bill => bill.BillDate)
+                .ThenByDescending(bill => bill.BillNumber));
     }
 
     [RelayCommand]
@@ -187,6 +199,88 @@ public partial class PurchaseBillViewModel : ObservableObject
         IsPosted = false;
         StatusMessage = "Ready for a new bill.";
         AddLine();
+    }
+
+    [RelayCommand]
+    private void LoadDraft()
+    {
+        if (SelectedDraft == null)
+        {
+            StatusMessage = "Select a saved draft to load.";
+            return;
+        }
+
+        foreach (var line in Lines)
+            line.PropertyChanged -= OnLinePropertyChanged;
+        Lines.Clear();
+
+        _savedBillId = SelectedDraft.Id;
+        _printSnapshot = null;
+        BillNumber = SelectedDraft.BillNumber;
+        SupplierInvoiceNumber = SelectedDraft.SupplierInvoiceNumber ?? "";
+        BillDate = SelectedDraft.BillDate;
+        DueDate = SelectedDraft.DueDate;
+        SupplierName = SelectedDraft.SupplierName;
+        Reference = SelectedDraft.Reference ?? "";
+        Narration = SelectedDraft.Narration ?? "";
+        IsVatApplicable = SelectedDraft.IsVatApplicable;
+        VatRate = SelectedDraft.VatRate;
+
+        foreach (var draftLine in SelectedDraft.Lines)
+        {
+            var line = new PurchaseLineViewModel
+            {
+                LineNumber = Lines.Count + 1,
+                SelectedItem = draftLine.ItemId.HasValue
+                    ? AvailableItems.FirstOrDefault(item => item.Id == draftLine.ItemId.Value)
+                    : null,
+                Description = draftLine.Description,
+                Quantity = draftLine.Quantity,
+                Rate = draftLine.Rate,
+                DiscountPercent = draftLine.DiscountPercent,
+                TaxPercent = draftLine.TaxPercent
+            };
+            line.PropertyChanged += OnLinePropertyChanged;
+            Lines.Add(line);
+        }
+
+        if (Lines.Count == 0)
+            AddLine();
+
+        CalculateTotals();
+        IsDocumentEditable = true;
+        CanPrint = false;
+        CanPost = true;
+        IsPosted = false;
+        StatusMessage = $"Loaded draft {BillNumber}.";
+    }
+
+    [RelayCommand]
+    private async Task DiscardDraft()
+    {
+        var draft = SelectedDraft ?? DraftBills.FirstOrDefault(bill => bill.Id == _savedBillId);
+        if (draft == null)
+        {
+            StatusMessage = "Select or load a draft to discard.";
+            return;
+        }
+
+        if (MessageBox.Show(
+                $"Discard draft {draft.BillNumber}? This cannot be undone.",
+                "Discard Draft", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            await _purchaseService.DeleteDraftBillAsync(draft.Id, _session.UserId);
+            NewBill();
+            await LoadDataAsync();
+            StatusMessage = $"Discarded draft {draft.BillNumber}.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -354,14 +448,6 @@ public partial class PurchaseBillViewModel : ObservableObject
 
         if (_savedBillId.HasValue)
         {
-            if (!post)
-            {
-                StatusMessage = IsPosted
-                    ? $"Bill {BillNumber} is already posted. Select New Bill to start another."
-                    : $"Draft {BillNumber} is already saved. Post it or select New Bill.";
-                return;
-            }
-
             if (IsPosted)
             {
                 StatusMessage = $"Bill {BillNumber} is already posted. Select New Bill to start another.";
@@ -370,10 +456,55 @@ public partial class PurchaseBillViewModel : ObservableObject
 
             try
             {
-                var postedBill = await _purchaseService.PostBillAsync(_savedBillId.Value, _session.UserId);
-                IsPosted = true;
-                CanPost = false;
-                StatusMessage = $"Posted {postedBill.BillNumber}.";
+                CalculateTotals();
+                var validLines = Lines.Where(l =>
+                    !string.IsNullOrWhiteSpace(l.Description) && l.Quantity > 0 && l.Rate > 0).ToList();
+                if (validLines.Count == 0)
+                    throw new InvalidOperationException("Add at least one bill line with description, quantity, and rate.");
+
+                var supplier = await _dataService.GetOrCreateSupplierAsync(_session.CompanyId.Value, SupplierName, _session.UserId);
+                var savedBill = await _purchaseService.UpdateDraftBillAsync(_savedBillId.Value, new CreatePurchaseBillRequest
+                {
+                    CompanyId = _session.CompanyId.Value,
+                    SupplierId = supplier.Id,
+                    BillDate = BillDate,
+                    DueDate = DueDate,
+                    SupplierInvoiceNumber = string.IsNullOrWhiteSpace(SupplierInvoiceNumber) ? null : SupplierInvoiceNumber.Trim(),
+                    Reference = string.IsNullOrWhiteSpace(Reference) ? null : Reference.Trim(),
+                    Narration = string.IsNullOrWhiteSpace(Narration) ? null : Narration.Trim(),
+                    IsVatApplicable = IsVatApplicable,
+                    VatRate = VatRate,
+                    Lines = validLines.Select(l => new PurchaseBillLineRequest
+                    {
+                        ItemId = l.ItemId,
+                        Description = l.Description.Trim(),
+                        Quantity = l.Quantity,
+                        Rate = l.Rate,
+                        DiscountPercent = l.DiscountPercent,
+                        TaxPercent = IsVatApplicable ? l.TaxPercent : 0
+                    }).ToList()
+                }, _session.UserId);
+
+                BillNumber = savedBill.BillNumber;
+                SubTotal = savedBill.SubTotal;
+                DiscountAmount = savedBill.DiscountAmount;
+                VatAmount = savedBill.VatAmount;
+                TotalAmount = savedBill.TotalAmount;
+
+                if (post)
+                {
+                    var postedBill = await _purchaseService.PostBillAsync(_savedBillId.Value, _session.UserId);
+                    IsPosted = true;
+                    CanPost = false;
+                    IsDocumentEditable = false;
+                    StatusMessage = $"Posted {postedBill.BillNumber}.";
+                    await LoadDataAsync();
+                }
+                else
+                {
+                    StatusMessage = $"Updated draft {BillNumber}.";
+                    await LoadDataAsync();
+                }
             }
             catch (Exception ex)
             {

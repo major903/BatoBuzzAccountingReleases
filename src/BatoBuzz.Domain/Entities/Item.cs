@@ -91,6 +91,21 @@ public class Item : AuditableEntity
         if (isActive.HasValue) IsActive = isActive.Value;
     }
 
+    public void UpdateDetails(string name, string? code, decimal standardCost, decimal salePrice, decimal? reorderLevel, bool isActive)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Item name is required.", nameof(name));
+        if (standardCost < 0 || salePrice < 0 || reorderLevel is < 0)
+            throw new ArgumentOutOfRangeException(nameof(standardCost), "Item prices and reorder level cannot be negative.");
+
+        Name = name.Trim();
+        Code = string.IsNullOrWhiteSpace(code) ? null : code.Trim();
+        StandardCost = standardCost;
+        SalePrice = salePrice;
+        ReorderLevel = reorderLevel;
+        IsActive = isActive;
+    }
+
     public bool IsLowStock => ItemType == ItemType.Goods && ReorderLevel.HasValue &&
         StockBalances.Sum(sb => sb.Quantity) <= ReorderLevel.Value;
 }

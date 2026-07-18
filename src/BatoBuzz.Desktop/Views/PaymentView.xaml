@@ -58,6 +58,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" IsEnabled="{Binding IsDocumentEditable}">
@@ -81,7 +82,7 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="4" Margin="0,0,0,14">
-                            <TextBlock Text="Amount" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBlock Text="Cash Paid (net)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                             <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                     </Grid>
@@ -131,12 +132,27 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="4" Margin="0,0,0,14">
-                            <TextBlock Text="Total Settled (cash + TDS)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBlock Text="Gross Settled (cash + TDS)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                             <TextBlock Text="{Binding TotalSettled, StringFormat='Rs. {0:N2}'}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="3" Margin="0,0,0,16" IsEnabled="{Binding IsDocumentEditable}">
+                    <Expander Grid.Row="3" Header="Allocate to specific bills (optional)" IsEnabled="{Binding IsDocumentEditable}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Enter amounts only for the bills this payment should settle. Leaving every amount blank applies oldest bills first."
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,6"/>
+                            <DataGrid ItemsSource="{Binding OpenBills}" AutoGenerateColumns="False" CanUserAddRows="False" MaxHeight="180">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Bill" Binding="{Binding DocumentNumber}" Width="*" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding DocumentDate, StringFormat=d}" Width="120" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Outstanding" Binding="{Binding BalanceDue, StringFormat='Rs. {0:N2}'}" Width="150" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Apply" Binding="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" Width="150"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Expander>
+
+                    <StackPanel Grid.Row="4" Margin="0,0,0,16" IsEnabled="{Binding IsDocumentEditable}">
                         <TextBlock Text="Narration" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                         <TextBox Text="{Binding Narration}"
                                  Height="72"
@@ -145,7 +161,7 @@
                                  VerticalScrollBarVisibility="Auto"/>
                     </StackPanel>
 
-                    <Border Grid.Row="4"
+                    <Border Grid.Row="5"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1,0,0,0"
                             Padding="0,14,0,0">

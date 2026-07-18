@@ -318,6 +318,59 @@ public sealed class DesktopDataService
         return warehouse;
     }
 
+    public async Task<ItemCategory> GetOrCreateItemCategoryAsync(Guid companyId, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Category name is required.");
+        var cleanName = name.Trim();
+        var categories = await _unitOfWork.ItemCategories.GetByCompanyAsync(companyId);
+        var existing = categories.FirstOrDefault(category =>
+            string.Equals(category.Name, cleanName, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+            return existing;
+
+        var category = ItemCategory.Create(companyId, cleanName);
+        await _unitOfWork.ItemCategories.AddAsync(category);
+        await _unitOfWork.SaveChangesAsync();
+        return category;
+    }
+
+    public Task<IReadOnlyList<Unit>> GetUnitsAsync(Guid companyId) =>
+        _unitOfWork.Units.GetByCompanyAsync(companyId);
+
+    public Task<IReadOnlyList<Warehouse>> GetWarehousesAsync(Guid companyId) =>
+        _unitOfWork.Warehouses.GetByCompanyAsync(companyId);
+
+    public Task<IReadOnlyList<ItemCategory>> GetItemCategoriesAsync(Guid companyId) =>
+        _unitOfWork.ItemCategories.GetByCompanyAsync(companyId);
+
+    public async Task SetUnitActiveAsync(Guid unitId, bool isActive, Guid userId)
+    {
+        var unit = await _unitOfWork.Units.GetByIdAsync(unitId)
+            ?? throw new InvalidOperationException("Unit not found.");
+        unit.SetActive(isActive);
+        unit.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task SetWarehouseActiveAsync(Guid warehouseId, bool isActive, Guid userId)
+    {
+        var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(warehouseId)
+            ?? throw new InvalidOperationException("Warehouse not found.");
+        warehouse.SetActive(isActive);
+        warehouse.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task SetItemCategoryActiveAsync(Guid categoryId, bool isActive, Guid userId)
+    {
+        var category = await _unitOfWork.ItemCategories.GetByIdAsync(categoryId)
+            ?? throw new InvalidOperationException("Category not found.");
+        category.SetActive(isActive);
+        category.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
     public async Task<Item?> GetItemByNameAsync(Guid companyId, string name)
     {
         var items = await _unitOfWork.Items.GetByCompanyAsync(companyId, activeOnly: false);
@@ -334,6 +387,133 @@ public sealed class DesktopDataService
     public async Task<IReadOnlyList<Ledger>> GetLedgersAsync(Guid companyId) =>
         await _unitOfWork.Ledgers.GetByCompanyAsync(companyId);
 
+    public async Task<IReadOnlyList<AccountGroup>> GetAccountGroupsAsync(Guid companyId)
+    {
+        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+            ?? throw new InvalidOperationException("Company not found.");
+        return company.AccountGroups.OrderBy(group => group.AccountType).ThenBy(group => group.DisplayOrder).ThenBy(group => group.Name).ToList();
+    }
+
+    public async Task<AccountGroup> CreateAccountGroupAsync(
+        Guid companyId, string name, AccountType accountType, Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Account group name is required.");
+        if (name.Trim().Length > 200)
+            throw new InvalidOperationException("Account group name cannot exceed 200 characters.");
+
+        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+            ?? throw new InvalidOperationException("Company not found.");
+        if (company.AccountGroups.Any(group => string.Equals(group.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Account group '{name.Trim()}' already exists.");
+
+        var displayOrder = company.AccountGroups.Where(group => group.AccountType == accountType)
+            .Select(group => group.DisplayOrder).DefaultIfEmpty(0).Max() + 1;
+        var group = AccountGroup.Create(companyId, name.Trim(), accountType, displayOrder);
+        group.SetCreatedBy(userId);
+        company.AccountGroups.Add(group);
+        await _unitOfWork.AccountGroups.AddAsync(group);
+        await _unitOfWork.SaveChangesAsync();
+        return group;
+    }
+
+    public async Task<AccountGroup> RenameAccountGroupAsync(Guid companyId, Guid accountGroupId, string name, Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Account group name is required.");
+        if (name.Trim().Length > 200)
+            throw new InvalidOperationException("Account group name cannot exceed 200 characters.");
+
+        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+            ?? throw new InvalidOperationException("Company not found.");
+        var companyGroups = company.AccountGroups.ToList();
+        var group = companyGroups.Single(candidate => candidate.Id == accountGroupId);
+        if (group.IsSystem)
+            throw new InvalidOperationException("System account groups cannot be renamed.");
+        if (companyGroups.Any(candidate => candidate.Id != group.Id
+            && string.Equals(candidate.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Account group '{name.Trim()}' already exists.");
+
+        group.Rename(name);
+        group.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+        return group;
+    }
+
+    public async Task SetAccountGroupActiveAsync(Guid companyId, Guid accountGroupId, bool isActive, Guid userId)
+    {
+        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+            ?? throw new InvalidOperationException("Company not found.");
+        var group = company.AccountGroups.SingleOrDefault(candidate => candidate.Id == accountGroupId)
+            ?? throw new InvalidOperationException("Account group not found.");
+        if (!isActive && group.Ledgers.Any(ledger => ledger.IsActive))
+            throw new InvalidOperationException("Deactivate or move the account group's active ledgers before deactivating the group.");
+
+        group.SetActive(isActive);
+        group.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task<Ledger> CreateLedgerAsync(
+        Guid companyId,
+        Guid accountGroupId,
+        string name,
+        string? code,
+        LedgerType ledgerType,
+        Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Ledger name is required.");
+        if (name.Trim().Length > 200 || code?.Trim().Length > 50)
+            throw new InvalidOperationException("Ledger name or code exceeds the supported length.");
+        if (ledgerType is LedgerType.Customer or LedgerType.Supplier or LedgerType.Inventory)
+            throw new InvalidOperationException("Customer, supplier, and inventory control ledgers are created only by their dedicated workflows.");
+
+        var company = await _unitOfWork.Companies.GetByIdWithDetailsAsync(companyId)
+            ?? throw new InvalidOperationException("Company not found.");
+        if (company.AccountGroups.All(group => group.Id != accountGroupId || !group.IsActive))
+            throw new InvalidOperationException("Account group does not belong to the selected company.");
+        if (company.Ledgers.Any(ledger => string.Equals(ledger.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Ledger '{name.Trim()}' already exists.");
+        if (!string.IsNullOrWhiteSpace(code) && company.Ledgers.Any(ledger => string.Equals(ledger.Code, code.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Ledger code '{code.Trim()}' already exists.");
+
+        var ledger = Ledger.Create(companyId, accountGroupId, name.Trim(), ledgerType, code?.Trim());
+        ledger.SetCreatedBy(userId);
+        await _unitOfWork.Ledgers.AddAsync(ledger);
+        await _unitOfWork.SaveChangesAsync();
+        return ledger;
+    }
+
+    public async Task<Ledger> UpdateLedgerAsync(
+        Guid ledgerId, string name, string? code, bool isActive, Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Ledger name is required.");
+        if (name.Trim().Length > 200 || code?.Trim().Length > 50)
+            throw new InvalidOperationException("Ledger name or code exceeds the supported length.");
+
+        var ledger = await _unitOfWork.Ledgers.GetByIdAsync(ledgerId)
+            ?? throw new InvalidOperationException("Ledger not found.");
+        if (ledger.IsSystem)
+            throw new InvalidOperationException("System ledgers are maintained by their dedicated workflows and cannot be edited here.");
+        if (ledger.LedgerType is LedgerType.Customer or LedgerType.Supplier or LedgerType.Inventory)
+            throw new InvalidOperationException("Control ledgers are maintained by their dedicated workflows and cannot be edited here.");
+
+        var ledgers = await _unitOfWork.Ledgers.GetByCompanyAsync(ledger.CompanyId);
+        if (ledgers.Any(candidate => candidate.Id != ledger.Id
+            && string.Equals(candidate.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Ledger '{name.Trim()}' already exists.");
+        if (!string.IsNullOrWhiteSpace(code) && ledgers.Any(candidate => candidate.Id != ledger.Id
+            && string.Equals(candidate.Code, code.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Ledger code '{code.Trim()}' already exists.");
+
+        ledger.Update(name.Trim(), string.IsNullOrWhiteSpace(code) ? null : code.Trim(), isActive);
+        ledger.SetModifiedBy(userId);
+        await _unitOfWork.SaveChangesAsync();
+        return ledger;
+    }
+
     public async Task<IReadOnlyList<JournalEntry>> GetJournalEntriesAsync(Guid companyId, DateTime fromDate, DateTime toDate) =>
         await _unitOfWork.JournalEntries.GetByCompanyAsync(companyId, fromDate, toDate);
 
@@ -348,6 +528,7 @@ public sealed class DesktopDataService
         await GetOrCreateUnitAsync(companyId);
         await GetOrCreateWarehouseAsync(companyId);
     }
+
 
     private async Task<AccountGroup> GetOrCreateAccountGroupAsync(Guid companyId, string name, AccountType accountType, int displayOrder)
     {
