@@ -1,12 +1,12 @@
-; BatoBuzz Accounting - Inno Setup Installer Script
-#define MyAppName "BatoBuzz Accounting"
+; BatoBuzz Accounting - Windows 7 SP1 Legacy Installer
+#define MyAppName "BatoBuzz Accounting (Windows 7 Legacy)"
 #define MyAppVersion "1.0.10"
 #define MyAppPublisher "BatoBuzz Technologies Pvt Ltd"
 #define MyAppURL "https://batobuzz.com"
 #define MyAppExeName "BatoBuzz.Desktop.exe"
 
 [Setup]
-AppId={{BatoBuzz-Accounting-2026}
+AppId={{BatoBuzz-Accounting-Windows7-2026}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -14,19 +14,14 @@ VersionInfoVersion={#MyAppVersion}
 SetupIconFile=..\src\BatoBuzz.Desktop\Assets\BatoBuzz.ico
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\BatoBuzz\Accounting
-DisableProgramGroupPage=no
 OutputDir=..\dist
-OutputBaseFilename=BatoBuzzAccounting_Setup_v{#MyAppVersion}
-MinVersion=10.0
+OutputBaseFilename=BatoBuzzAccounting_Windows7_Legacy_Setup_v{#MyAppVersion}
+MinVersion=6.1sp1
 PrivilegesRequired=admin
 Compression=lzma
 SolidCompression=yes
-WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#MyAppName}
 
 [Languages]
@@ -36,7 +31,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\publish-win7\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

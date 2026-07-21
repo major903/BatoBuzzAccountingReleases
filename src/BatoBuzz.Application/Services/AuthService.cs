@@ -45,9 +45,7 @@ public class AuthService : IAuthService
         var email = string.IsNullOrWhiteSpace(request.Email)
             ? $"{userName.ToLowerInvariant()}@local.batobuzz"
             : request.Email.Trim().ToLowerInvariant();
-        if (email.Length > 200
-            || !MailAddress.TryCreate(email, out var parsedEmail)
-            || !string.Equals(parsedEmail.Address, email, StringComparison.OrdinalIgnoreCase))
+        if (email.Length > 200 || !IsValidEmail(email))
         {
             return AuthResult.Fail("A valid email address is required.");
         }
@@ -169,13 +167,8 @@ public class AuthService : IAuthService
 
     private static string HashPassword(string password)
     {
-        var salt = RandomNumberGenerator.GetBytes(PasswordSaltSize);
-        var key = Rfc2898DeriveBytes.Pbkdf2(
-            password,
-            salt,
-            PasswordIterations,
-            HashAlgorithmName.SHA256,
-            PasswordKeySize);
+        var salt = CreateRandomBytes(PasswordSaltSize);
+        var key = DeriveKey(password, salt, PasswordIterations, PasswordKeySize);
 
         return "pbkdf2-sha256$" + PasswordIterations + "$"
             + Convert.ToBase64String(salt) + "$" + Convert.ToBase64String(key);
@@ -200,19 +193,14 @@ public class AuthService : IAuthService
                 if (salt.Length < 8 || expected.Length < 16)
                     return false;
 
-                var actual = Rfc2898DeriveBytes.Pbkdf2(
-                    password,
-                    salt,
-                    iterations,
-                    HashAlgorithmName.SHA256,
-                    expected.Length);
+                var actual = DeriveKey(password, salt, iterations, expected.Length);
 
-                return CryptographicOperations.FixedTimeEquals(actual, expected);
+                return FixedTimeEquals(actual, expected);
             }
 
-            var legacyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-            var legacyHash = Convert.ToHexString(legacyBytes);
-            return CryptographicOperations.FixedTimeEquals(
+            var legacyBytes = HashBytes(Encoding.UTF8.GetBytes(password));
+            var legacyHash = ToHexString(legacyBytes);
+            return FixedTimeEquals(
                 Encoding.UTF8.GetBytes(legacyHash),
                 Encoding.UTF8.GetBytes(hash));
         }
@@ -239,6 +227,56 @@ public class AuthService : IAuthService
         PreferredLanguage = user.PreferredLanguage,
         Roles = user.UserRoles.Select(userRole => userRole.Role.Name).ToList()
     };
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var parsedEmail = new MailAddress(email);
+            return string.Equals(parsedEmail.Address, email, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static byte[] CreateRandomBytes(int length)
+    {
+        var bytes = new byte[length];
+        using (var generator = RandomNumberGenerator.Create())
+            generator.GetBytes(bytes);
+        return bytes;
+    }
+
+    private static byte[] DeriveKey(string password, byte[] salt, int iterations, int length)
+    {
+#if WINDOWS7_LEGACY
+        using (var deriveBytes = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256))
+            return deriveBytes.GetBytes(length);
+#else
+        return Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, length);
+#endif
+    }
+
+    private static byte[] HashBytes(byte[] value)
+    {
+        using (var algorithm = SHA256.Create())
+            return algorithm.ComputeHash(value);
+    }
+
+    private static string ToHexString(byte[] value) => BitConverter.ToString(value).Replace("-", string.Empty);
+
+    private static bool FixedTimeEquals(byte[] left, byte[] right)
+    {
+        if (left.Length != right.Length)
+            return false;
+
+        var difference = 0;
+        for (var index = 0; index < left.Length; index++)
+            difference |= left[index] ^ right[index];
+        return difference == 0;
+    }
 }
 
 public interface ITokenService
@@ -253,7 +291,9 @@ public sealed class LocalTokenService : ITokenService
 
     public string GenerateOfflineToken(User user)
     {
-        var bytes = RandomNumberGenerator.GetBytes(32);
+        var bytes = new byte[32];
+        using (var generator = RandomNumberGenerator.Create())
+            generator.GetBytes(bytes);
         return Convert.ToBase64String(Encoding.UTF8.GetBytes(
             $"{user.Id:N}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:{Convert.ToBase64String(bytes)}"));
     }

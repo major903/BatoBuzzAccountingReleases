@@ -102,7 +102,7 @@ public partial class App : System.Windows.Application
                 var db = scope.ServiceProvider.GetRequiredService<BatoBuzzDbContext>();
                 db.Database.EnsureCreated();
 
-                var connectionString = db.Database.GetConnectionString();
+                var connectionString = db.Database.GetDbConnection().ConnectionString;
                 if (!string.IsNullOrEmpty(connectionString))
                     SchemaUpgrader.ApplyAll(connectionString);
             }
@@ -174,7 +174,7 @@ public partial class App : System.Windows.Application
                 SqliteDatabaseGuard.CreateOnlineBackup(DatabasePath, safetyBackupPath);
             }
 
-            SqliteConnection.ClearAllPools();
+            ClearSqlitePools();
             replacementStarted = true;
             foreach (var suffix in new[] { "-wal", "-shm" })
             {
@@ -192,7 +192,7 @@ public partial class App : System.Windows.Application
         }
         catch
         {
-            SqliteConnection.ClearAllPools();
+            ClearSqlitePools();
 
             try
             {
@@ -232,6 +232,13 @@ public partial class App : System.Windows.Application
         {
             // The original restore error remains the actionable failure.
         }
+    }
+
+    private static void ClearSqlitePools()
+    {
+#if !WINDOWS7_LEGACY
+        SqliteConnection.ClearAllPools();
+#endif
     }
 
     private void HandleFatalException(string heading, Exception exception)

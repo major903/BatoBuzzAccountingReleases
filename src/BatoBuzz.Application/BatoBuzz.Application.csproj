@@ -1,11 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework Condition="'$(Windows7Legacy)' != 'true'">net10.0</TargetFramework>
+    <TargetFramework Condition="'$(Windows7Legacy)' == 'true'">net48</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\BatoBuzz.Domain\BatoBuzz.Domain.csproj" />
     <ProjectReference Include="..\BatoBuzz.Contracts\BatoBuzz.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Windows7Legacy)' == 'true'">
+    <Compile Include="..\BuildCompat\IsExternalInit.cs" Link="Compatibility\IsExternalInit.cs" />
   </ItemGroup>
 </Project>

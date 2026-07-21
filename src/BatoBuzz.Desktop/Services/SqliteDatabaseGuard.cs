@@ -40,7 +40,8 @@ public static class SqliteDatabaseGuard
 
     public static void ValidateBackup(string databasePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        if (string.IsNullOrWhiteSpace(databasePath))
+            throw new ArgumentException("A database path is required.", nameof(databasePath));
         var fullPath = Path.GetFullPath(databasePath);
         if (!File.Exists(fullPath) || new FileInfo(fullPath).Length == 0)
             throw new InvalidOperationException("The selected database backup is missing or empty.");
@@ -89,8 +90,10 @@ public static class SqliteDatabaseGuard
 
     public static void CreateOnlineBackup(string sourcePath, string destinationPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+        if (string.IsNullOrWhiteSpace(sourcePath))
+            throw new ArgumentException("A source database path is required.", nameof(sourcePath));
+        if (string.IsNullOrWhiteSpace(destinationPath))
+            throw new ArgumentException("A destination database path is required.", nameof(destinationPath));
 
         var fullSourcePath = Path.GetFullPath(sourcePath);
         var fullDestinationPath = Path.GetFullPath(destinationPath);
@@ -131,7 +134,7 @@ public static class SqliteDatabaseGuard
         }
         catch
         {
-            SqliteConnection.ClearAllPools();
+            ClearSqlitePools();
             try
             {
                 if (File.Exists(fullDestinationPath))
@@ -144,5 +147,12 @@ public static class SqliteDatabaseGuard
 
             throw;
         }
+    }
+
+    private static void ClearSqlitePools()
+    {
+#if !WINDOWS7_LEGACY
+        SqliteConnection.ClearAllPools();
+#endif
     }
 }

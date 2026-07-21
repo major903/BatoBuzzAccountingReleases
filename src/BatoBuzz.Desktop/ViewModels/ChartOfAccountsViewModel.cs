@@ -42,7 +42,7 @@ public partial class ChartOfAccountsViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = "";
 
-    public string[] AccountTypes { get; } = Enum.GetNames<AccountType>();
+    public string[] AccountTypes { get; } = Enum.GetNames(typeof(AccountType));
     public string[] LedgerTypes { get; } =
     [
         nameof(BatoBuzz.Domain.Enums.LedgerType.General),

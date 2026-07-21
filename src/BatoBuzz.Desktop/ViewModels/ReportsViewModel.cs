@@ -401,12 +401,12 @@ public partial class ReportsViewModel : ObservableObject
         var titleMatch = Regex.Match(html, "<h2>(.*?)</h2>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         var title = titleMatch.Success ? CleanCellText(titleMatch.Groups[1].Value) : "Report";
 
-        var summaries = Regex.Matches(html, "<h3>(.*?)</h3>", RegexOptions.Singleline | RegexOptions.IgnoreCase)
+        var summaries = Regex.Matches(html, "<h3>(.*?)</h3>", RegexOptions.Singleline | RegexOptions.IgnoreCase).Cast<Match>()
             .Select(m => CleanCellText(m.Groups[1].Value))
             .ToList();
 
-        var tableRows = Regex.Matches(html, "<tr>(.*?)</tr>", RegexOptions.Singleline | RegexOptions.IgnoreCase)
-            .Select(row => Regex.Matches(row.Groups[1].Value, "<t[dh]>(.*?)</t[dh]>", RegexOptions.Singleline | RegexOptions.IgnoreCase)
+        var tableRows = Regex.Matches(html, "<tr>(.*?)</tr>", RegexOptions.Singleline | RegexOptions.IgnoreCase).Cast<Match>()
+            .Select(row => Regex.Matches(row.Groups[1].Value, "<t[dh]>(.*?)</t[dh]>", RegexOptions.Singleline | RegexOptions.IgnoreCase).Cast<Match>()
                 .Select(c => CleanCellText(c.Groups[1].Value))
                 .ToArray())
             .ToList();
@@ -423,7 +423,7 @@ public partial class ReportsViewModel : ObservableObject
     private static void WriteReportExcel(ParsedReport report, string filePath)
     {
         using var workbook = new XLWorkbook();
-        var sheetName = report.Title.Length > 31 ? report.Title[..31] : report.Title;
+        var sheetName = report.Title.Length > 31 ? report.Title.Substring(0, 31) : report.Title;
         var ws = workbook.Worksheets.Add(string.IsNullOrWhiteSpace(sheetName) ? "Report" : sheetName);
 
         var r = 1;

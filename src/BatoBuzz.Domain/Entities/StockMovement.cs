@@ -51,7 +51,7 @@ public class StockMovement : AuditableEntity
     {
         if (companyId == Guid.Empty || itemId == Guid.Empty || warehouseId == Guid.Empty)
             throw new ArgumentException("Company, item, and warehouse are required.");
-        if (!Enum.IsDefined(movementType))
+        if (!Enum.IsDefined(typeof(MovementType), movementType))
             throw new ArgumentOutOfRangeException(nameof(movementType), "Movement type is invalid.");
         if (quantity <= 0)
             throw new ArgumentOutOfRangeException(nameof(quantity), "Movement quantity must be greater than zero.");

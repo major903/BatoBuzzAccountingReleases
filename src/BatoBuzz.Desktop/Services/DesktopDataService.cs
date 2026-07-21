@@ -298,7 +298,7 @@ public sealed class DesktopDataService
         if (existing != null)
             return existing;
 
-        var unit = Unit.Create(companyId, cleanName, cleanName.Length > 4 ? cleanName[..3] : cleanName);
+        var unit = Unit.Create(companyId, cleanName, cleanName.Length > 4 ? cleanName.Substring(0, 3) : cleanName);
         await _unitOfWork.Units.AddAsync(unit);
         await _unitOfWork.SaveChangesAsync();
         return unit;

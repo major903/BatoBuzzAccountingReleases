@@ -11,8 +11,20 @@
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <Company>BatoBuzz Technologies Pvt Ltd</Company>
     <Product>BatoBuzz Accounting</Product>
-    <Version>1.0.9</Version>
+    <Version>1.0.10</Version>
     <Copyright>Copyright (c) 2026 BatoBuzz Technologies Pvt Ltd</Copyright>
+  </PropertyGroup>
+
+  <!--
+    The primary product targets modern Windows.  Passing -p:Windows7Legacy=true
+    selects the isolated .NET Framework 4.8 compatibility build instead.
+    Do not use this property for the API project.
+  -->
+  <PropertyGroup Condition="'$(Windows7Legacy)' == 'true'">
+    <DefineConstants>$(DefineConstants);WINDOWS7_LEGACY</DefineConstants>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)\obj\win7-legacy.packages.lock.json</NuGetLockFilePath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>1.0.10-win7</Version>
   </PropertyGroup>
 
   <!-- Package versions -->

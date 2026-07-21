@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(Windows7Legacy)' != 'true'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(Windows7Legacy)' == 'true'">net48</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -48,14 +49,41 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="$(SQLitePCLRawVersion)" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" Condition="'$(Windows7Legacy)' != 'true'" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="$(SQLitePCLRawVersion)" Condition="'$(Windows7Legacy)' != 'true'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" Condition="'$(Windows7Legacy)' != 'true'" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" Condition="'$(Windows7Legacy)' != 'true'" />
     <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="PdfSharp" Version="6.2.4" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" Condition="'$(Windows7Legacy)' != 'true'" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.32" Condition="'$(Windows7Legacy)' == 'true'" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.11" Condition="'$(Windows7Legacy)' == 'true'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.32" Condition="'$(Windows7Legacy)' == 'true'" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.32" Condition="'$(Windows7Legacy)' == 'true'" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" Condition="'$(Windows7Legacy)' == 'true'" />
+    <PackageReference Include="System.Memory" Version="4.6.0" Condition="'$(Windows7Legacy)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Windows7Legacy)' == 'true'">
+    <Page Remove="Views\ReportsView.xaml" />
+    <Compile Remove="Views\ReportsView.xaml.cs" />
+    <Compile Remove="Services\GitHubReleaseUpdateService.cs" />
+    <Page Remove="LegacyWin7\ReportsView.xaml" />
+    <Compile Remove="LegacyWin7\ReportsView.xaml.cs" />
+    <Compile Remove="LegacyWin7\GitHubReleaseUpdateService.cs" />
+    <Page Include="LegacyWin7\ReportsView.xaml" Link="Views\ReportsView.xaml" />
+    <Compile Include="LegacyWin7\ReportsView.xaml.cs" Link="Views\ReportsView.xaml.cs" />
+    <Compile Include="LegacyWin7\GitHubReleaseUpdateService.cs" Link="Services\GitHubReleaseUpdateService.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Windows7Legacy)' != 'true'">
+    <Compile Remove="LegacyWin7\ReportsView.xaml.cs" />
+    <Page Remove="LegacyWin7\ReportsView.xaml" />
+    <Compile Remove="LegacyWin7\GitHubReleaseUpdateService.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Windows7Legacy)' == 'true'">
+    <Compile Include="..\BuildCompat\IsExternalInit.cs" Link="Compatibility\IsExternalInit.cs" />
+    <Compile Include="..\BuildCompat\LegacyCollectionExtensions.cs" Link="Compatibility\LegacyCollectionExtensions.cs" />
   </ItemGroup>
 </Project>

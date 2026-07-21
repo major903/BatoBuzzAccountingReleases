@@ -106,6 +106,9 @@ docs/                        # Documentation
 - Windows 10/11 (for desktop)
 - Docker (optional, for API deployment)
 
+Windows 7 SP1 customers must use the separately packaged legacy edition; see
+[Windows 7 Legacy Edition](docs/deployment/WINDOWS_7_LEGACY.md).
+
 ### Build Desktop Application
 ```bash
 # Restore packages

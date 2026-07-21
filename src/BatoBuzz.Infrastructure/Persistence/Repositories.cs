@@ -59,7 +59,7 @@ public abstract class Repository<T> : IRepository<T> where T : class
             var activeTransaction = transaction
                 ?? throw new InvalidOperationException("A document-number transaction could not be started.");
 
-            await using var command = connection.CreateCommand();
+            using var command = connection.CreateCommand();
             command.Transaction = activeTransaction.GetDbTransaction();
             command.CommandText = """
                 INSERT INTO "DocumentSequences" ("CompanyId", "SequenceKey", "LastValue")
@@ -91,7 +91,7 @@ public abstract class Repository<T> : IRepository<T> where T : class
             if (transaction != null && ownsTransaction)
                 await transaction.DisposeAsync();
             if (!wasOpen)
-                await connection.CloseAsync();
+                connection.Close();
         }
     }
 }

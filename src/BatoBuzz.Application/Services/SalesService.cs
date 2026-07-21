@@ -193,11 +193,13 @@ public class SalesService : ISalesService
             var allocationAmount = Money.Round(allocation.AmountAllocated);
             if (allocationAmount <= 0)
                 throw new InvalidOperationException("Receipt allocation amounts must be greater than zero.");
-            if (!allocationInvoices.TryAdd(
-                    allocation.SalesInvoiceId,
-                    await _unitOfWork.SalesInvoices.GetByIdWithDetailsAsync(allocation.SalesInvoiceId)
-                        ?? throw new InvalidOperationException("Sales invoice allocation target not found.")))
+            if (allocationInvoices.ContainsKey(allocation.SalesInvoiceId))
                 throw new InvalidOperationException("Duplicate allocations for the same sales invoice are not allowed.");
+
+            allocationInvoices.Add(
+                allocation.SalesInvoiceId,
+                await _unitOfWork.SalesInvoices.GetByIdWithDetailsAsync(allocation.SalesInvoiceId)
+                    ?? throw new InvalidOperationException("Sales invoice allocation target not found."));
 
             var invoice = allocationInvoices[allocation.SalesInvoiceId];
             if (invoice.CompanyId != request.CompanyId || invoice.CustomerId != request.CustomerId)
@@ -563,7 +565,8 @@ public class SalesService : ISalesService
 
     private static void ValidateCorrection(CorrectPostedDocumentRequest request)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        if (request is null)
+            throw new ArgumentNullException(nameof(request));
         if (request.CorrectionDate == default)
             throw new InvalidOperationException("Correction date is required.");
         if (string.IsNullOrWhiteSpace(request.Reason))

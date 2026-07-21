@@ -200,11 +200,13 @@ public class PurchaseService : IPurchaseService
             var allocationAmount = Money.Round(allocation.AmountAllocated);
             if (allocationAmount <= 0)
                 throw new InvalidOperationException("Payment allocation amounts must be greater than zero.");
-            if (!allocationBills.TryAdd(
-                    allocation.PurchaseBillId,
-                    await _unitOfWork.PurchaseBills.GetByIdWithDetailsAsync(allocation.PurchaseBillId)
-                        ?? throw new InvalidOperationException("Purchase bill allocation target not found.")))
+            if (allocationBills.ContainsKey(allocation.PurchaseBillId))
                 throw new InvalidOperationException("Duplicate allocations for the same purchase bill are not allowed.");
+
+            allocationBills.Add(
+                allocation.PurchaseBillId,
+                await _unitOfWork.PurchaseBills.GetByIdWithDetailsAsync(allocation.PurchaseBillId)
+                    ?? throw new InvalidOperationException("Purchase bill allocation target not found."));
 
             var bill = allocationBills[allocation.PurchaseBillId];
             if (bill.CompanyId != request.CompanyId || bill.SupplierId != request.SupplierId)
@@ -593,7 +595,8 @@ public class PurchaseService : IPurchaseService
 
     private static void ValidateCorrection(CorrectPostedDocumentRequest request)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        if (request is null)
+            throw new ArgumentNullException(nameof(request));
         if (request.CorrectionDate == default)
             throw new InvalidOperationException("Correction date is required.");
         if (string.IsNullOrWhiteSpace(request.Reason))

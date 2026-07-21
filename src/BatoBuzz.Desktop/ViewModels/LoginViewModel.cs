@@ -43,7 +43,15 @@ public partial class LoginViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task Login()
+    private Task Login() => AuthenticateAsync(createAccount: IsFirstRun, offlineMode: false);
+
+    [RelayCommand]
+    private Task LoginOffline() => AuthenticateAsync(createAccount: IsFirstRun, offlineMode: true);
+
+    [RelayCommand]
+    private Task CreateLocalAccount() => AuthenticateAsync(createAccount: true, offlineMode: true);
+
+    private async Task AuthenticateAsync(bool createAccount, bool offlineMode)
     {
         if (string.IsNullOrWhiteSpace(UserName) || string.IsNullOrWhiteSpace(Password))
         {
@@ -54,7 +62,8 @@ public partial class LoginViewModel : ObservableObject
         try
         {
             ErrorMessage = "";
-            var authResult = IsFirstRun
+            IsOfflineMode = offlineMode;
+            var authResult = createAccount
                 ? await _authService.RegisterAsync(new RegisterRequest
                 {
                     UserName = UserName.Trim(),
@@ -87,13 +96,6 @@ public partial class LoginViewModel : ObservableObject
         {
             ErrorMessage = ex.Message;
         }
-    }
-
-    [RelayCommand]
-    private async Task LoginOffline()
-    {
-        IsOfflineMode = true;
-        await Login();
     }
 
     public async Task InitializeAsync()

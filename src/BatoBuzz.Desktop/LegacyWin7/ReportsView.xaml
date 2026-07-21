@@ -1,0 +1,69 @@
+<UserControl x:Class="BatoBuzz.Desktop.Views.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{DynamicResource SectionPanel}" Margin="0,0,0,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="Reports" Style="{DynamicResource ViewTitle}"/>
+                    <TextBlock Text="Windows 7 legacy viewer. Generate a report, then export it to PDF or Excel." Style="{DynamicResource ViewSubtitle}" Margin="0,4,0,2"/>
+                    <TextBlock Text="Generating report…" Foreground="{DynamicResource AccentBrush}" FontSize="12" FontWeight="SemiBold"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,10"/>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Report" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                        <ComboBox ItemsSource="{Binding AvailableReports}" SelectedItem="{Binding SelectedReport}" Width="180"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Visibility="{Binding IsLedgerFilterVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="Ledger" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                        <ComboBox ItemsSource="{Binding LedgerNames}" SelectedItem="{Binding SelectedLedgerName}" Width="180"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="From" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                        <DatePicker SelectedDate="{Binding FromDate}" Width="130"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6">
+                        <TextBlock Text="To" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
+                        <DatePicker SelectedDate="{Binding ToDate}" Width="130"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="8" VerticalAlignment="Bottom">
+                        <Button Content="Generate" Command="{Binding GenerateReportCommand}" Style="{DynamicResource PrimaryButton}" Padding="16,6"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="10" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                        <Button Content="PDF" Command="{Binding ExportPdfCommand}" Style="{DynamicResource SecondaryButton}" Margin="0,0,4,0" Padding="12,4"/>
+                        <Button Content="Excel" Command="{Binding ExportExcelCommand}" Style="{DynamicResource SecondaryButton}" Padding="12,4"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Style="{DynamicResource SectionPanel}">
+            <TextBox x:Name="ReportText" IsReadOnly="True" TextWrapping="NoWrap" AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="12"
+                     Text="Generate a report to view its text summary. For a formatted and printable copy, choose PDF or Excel." />
+        </Border>
+    </Grid>
+</UserControl>

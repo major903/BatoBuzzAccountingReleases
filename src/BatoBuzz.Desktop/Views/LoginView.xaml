@@ -62,9 +62,12 @@
 
                 <!-- Sign-in form -->
                 <Border Grid.Column="1" Background="{DynamicResource CardBrush}" CornerRadius="0,15,15,0" Padding="48,36">
-                    <StackPanel VerticalAlignment="Center">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalContentAlignment="Center">
+                    <StackPanel>
                         <TextBlock Text="Welcome back" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <TextBlock Text="Sign in to continue to your accounting workspace" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,25"/>
+                        <TextBlock Text="Sign in or create a local account for a separate workspace" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,25"/>
 
                         <TextBlock Text="USERNAME" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" FontWeight="SemiBold" Margin="1,0,0,6"/>
                         <TextBox Text="{Binding UserName}" Margin="0,0,0,16" ToolTip="Enter your BatoBuzz username"/>
@@ -91,12 +94,14 @@
                         </Border>
 
                         <Button Content="{Binding LoginButtonText}" Command="{Binding LoginCommand}" Style="{DynamicResource PrimaryButton}" Height="42" Margin="0,0,0,9"/>
-                        <Button Content="Continue with local login" Command="{Binding LoginOfflineCommand}" Style="{DynamicResource SecondaryButton}" Height="42" Margin="0,0,0,18"/>
+                        <Button Content="Continue with local login" Command="{Binding LoginOfflineCommand}" Style="{DynamicResource SecondaryButton}" Height="42" Margin="0,0,0,9"/>
+                        <Button Content="Create local account" Command="{Binding CreateLocalAccountCommand}" Style="{DynamicResource SecondaryButton}" Height="42" Margin="0,0,0,18" ToolTip="Create a separate account in this computer's local database"/>
 
                         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0">
-                            <TextBlock Text="Having trouble signing in? Contact your administrator." Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Local accounts are stored on this computer only." Foreground="{DynamicResource TextMutedBrush}" FontSize="11" HorizontalAlignment="Center"/>
                         </Border>
                     </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </Grid>
         </Border>

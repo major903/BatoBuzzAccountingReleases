@@ -9,6 +9,9 @@ with `scripts\build-release.ps1` is self-contained and does not require a
 separate .NET installation. The Microsoft Edge WebView2 Runtime is required to
 display and print reports; it is normally present on current Windows systems.
 
+For Windows 7 SP1, use only the separate legacy installer and its prerequisites:
+[Windows 7 Legacy Edition](../deployment/WINDOWS_7_LEGACY.md).
+
 For production, use the signed setup program supplied by BatoBuzz Technologies Pvt Ltd
 and verify its publisher in Windows before running it. The portable build is
 intended for controlled testing or support scenarios.

@@ -49,7 +49,7 @@ public class Receipt : AuditableEntity, IAggregateRoot
         if (customerId == Guid.Empty) throw new ArgumentException("Customer ID is required.", nameof(customerId));
         if (string.IsNullOrWhiteSpace(receiptNumber)) throw new ArgumentException("Receipt number is required.", nameof(receiptNumber));
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount), "Receipt amount must be greater than zero.");
-        if (!Enum.IsDefined(paymentMethod)) throw new ArgumentOutOfRangeException(nameof(paymentMethod), "Payment method is invalid.");
+        if (!Enum.IsDefined(typeof(PaymentMethod), paymentMethod)) throw new ArgumentOutOfRangeException(nameof(paymentMethod), "Payment method is invalid.");
 
         return new Receipt
         {

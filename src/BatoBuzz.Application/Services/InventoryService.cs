@@ -501,7 +501,8 @@ public class InventoryService : IInventoryService
 
     private static void ValidateCorrection(CorrectPostedDocumentRequest request)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        if (request is null)
+            throw new ArgumentNullException(nameof(request));
         if (request.CorrectionDate == default)
             throw new InvalidOperationException("Correction date is required.");
         if (string.IsNullOrWhiteSpace(request.Reason))

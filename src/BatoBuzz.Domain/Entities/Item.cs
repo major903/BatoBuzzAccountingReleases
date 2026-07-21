@@ -54,7 +54,7 @@ public class Item : AuditableEntity
             throw new ArgumentException("Unit ID is required.", nameof(unitId));
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Item name is required.", nameof(name));
-        if (!Enum.IsDefined(itemType))
+        if (!Enum.IsDefined(typeof(ItemType), itemType))
             throw new ArgumentOutOfRangeException(nameof(itemType), "Item type is invalid.");
         if (costingMethod != CostingMethod.WeightedAverage)
             throw new ArgumentOutOfRangeException(nameof(costingMethod), "Only weighted-average costing is supported.");

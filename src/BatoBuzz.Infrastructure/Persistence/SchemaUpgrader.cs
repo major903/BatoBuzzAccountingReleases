@@ -207,7 +207,8 @@ public static class SchemaUpgrader
 
     public static void ApplyAll(string connectionString)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentException("A SQLite connection string is required.", nameof(connectionString));
 
         using var connection = new SqliteConnection(connectionString);
         connection.Open();
@@ -226,7 +227,7 @@ public static class SchemaUpgrader
 
         foreach (var migration in pending)
         {
-            using var transaction = connection.BeginTransaction(deferred: false);
+        using var transaction = connection.BeginTransaction();
             migration.Apply(connection, transaction);
 
             using var record = connection.CreateCommand();

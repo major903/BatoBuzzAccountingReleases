@@ -1,5 +1,12 @@
 # Release Notes - BatoBuzz Accounting
 
+## v1.0.10
+
+- Added an explicit local-account creation action on the desktop sign-in screen.
+- Kept every local account in its own company-setup workspace.
+- Prevented validation messages from clipping the sign-in heading on compact screens.
+- Added a separately packaged Windows 7 SP1 legacy edition for controlled deployments.
+
 ## v1.0.9
 
 - Completed sales and purchase return workflows, including safeguarded partial returns.

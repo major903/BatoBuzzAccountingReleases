@@ -54,7 +54,7 @@ public class Payment : AuditableEntity, IAggregateRoot
         if (string.IsNullOrWhiteSpace(paymentNumber)) throw new ArgumentException("Payment number is required.", nameof(paymentNumber));
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount), "Payment amount must be greater than zero.");
         if (tdsAmount < 0) throw new ArgumentOutOfRangeException(nameof(tdsAmount), "TDS amount cannot be negative.");
-        if (!Enum.IsDefined(paymentMethod)) throw new ArgumentOutOfRangeException(nameof(paymentMethod), "Payment method is invalid.");
+        if (!Enum.IsDefined(typeof(PaymentMethod), paymentMethod)) throw new ArgumentOutOfRangeException(nameof(paymentMethod), "Payment method is invalid.");
 
         return new Payment
         {

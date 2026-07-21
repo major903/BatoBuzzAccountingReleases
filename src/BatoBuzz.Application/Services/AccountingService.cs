@@ -108,7 +108,8 @@ public class AccountingService : IAccountingService
     public async Task<JournalEntryDto> ReverseJournalAsync(
         Guid journalId, CorrectPostedDocumentRequest request, Guid userId)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        if (request is null)
+            throw new ArgumentNullException(nameof(request));
         if (request.CorrectionDate == default)
             throw new InvalidOperationException("Correction date is required.");
         if (string.IsNullOrWhiteSpace(request.Reason))
